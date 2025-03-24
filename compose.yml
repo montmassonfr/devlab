@@ -5,7 +5,8 @@ services:
    image: smallstep/step-ca
    environment:
      - "DOCKER_STEPCA_INIT_NAME=Smallstep"
-     - "DOCKER_STEPCA_INIT_DNS_NAMES=localhost,step-ca" # required in order traefik trust to call https://step-ca:9000
+     # required in order traefik trust to call https://step-ca:9000
+     - "DOCKER_STEPCA_INIT_DNS_NAMES=localhost,step-ca" 
      - "DOCKER_STEPCA_INIT_REMOTE_MANAGEMENT=true"
      - "DOCKER_STEPCA_INIT_ACME=true"
    volumes:
@@ -35,11 +36,14 @@ services:
     volumes:
       - "./letsencrypt:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" # TIPS: required in order to trust tls with https://step-ca:9000, must bootstrap docker host with step-ca see README.md
+      # TIPS: required in order to trust tls with https://step-ca:9000, must bootstrap docker host with step-ca see README.md
+      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
     networks:
       default:
         aliases:
-          - whoami.localhost # TIPS: used in order step-ca resolved it to traefik during acme challenge
+          # TIPS: used in order step-ca resolved it to traefik during acme challenge
+          - whoami.localhost 
+          - vaultwarden.localhost
   whoami:
     image: "traefik/whoami"
     container_name: "simple-service"
@@ -48,3 +52,16 @@ services:
       - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
       - "traefik.http.routers.whoami.entrypoints=websecure"
       - "traefik.http.routers.whoami.tls.certresolver=myresolver"
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    environment:
+      DOMAIN: "https://vaultwarden.localhost"
+    volumes:
+      - ./vw-data/:/data/
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.localhost`)"
+      - "traefik.http.routers.vaultwarden.entrypoints=websecure"
+      - "traefik.http.routers.vaultwarden.tls.certresolver=myresolver"
