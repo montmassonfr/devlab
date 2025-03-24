@@ -1,0 +1,50 @@
+volumes:
+  step:
+services:
+  step-ca:
+   image: smallstep/step-ca
+   environment:
+     - "DOCKER_STEPCA_INIT_NAME=Smallstep"
+     - "DOCKER_STEPCA_INIT_DNS_NAMES=localhost,step-ca" # required in order traefik trust to call https://step-ca:9000
+     - "DOCKER_STEPCA_INIT_REMOTE_MANAGEMENT=true"
+     - "DOCKER_STEPCA_INIT_ACME=true"
+   volumes:
+     - "./step-ca:/home/step"
+   ports:
+     - "9000:9000"
+
+  traefik:
+    image: "traefik:v3.3"
+    container_name: "traefik"
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.caserver=https://step-ca:9000/acme/acme/directory"
+      - "--certificatesresolvers.myresolver.acme.email=postmaster@example.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - "./letsencrypt:/letsencrypt"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" # TIPS: required in order to trust tls with https://step-ca:9000, must bootstrap docker host with step-ca see README.md
+    networks:
+      default:
+        aliases:
+          - whoami.localhost # TIPS: used in order step-ca resolved it to traefik during acme challenge
+  whoami:
+    image: "traefik/whoami"
+    container_name: "simple-service"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls.certresolver=myresolver"
