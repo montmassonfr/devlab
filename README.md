@@ -1,4 +1,10 @@
-# Step CA init
+# Dev lab
+
+This project initiate a devlab with all the tools required to develop on you work station where ever you are.
+
+## First installation
+
+In order to use your own ca you must start step-ca and configure your workstation to trust it.
 
 ## Start dev lab
 
