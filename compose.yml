@@ -1,6 +1,7 @@
 services:
   step-ca:
    image: smallstep/step-ca
+   restart: unless-stopped
    environment:
      - "DOCKER_STEPCA_INIT_NAME=Smallstep"
      # required in order traefik trust to call https://step-ca:9000
@@ -15,6 +16,7 @@ services:
   traefik:
     image: "traefik:v3.3"
     container_name: "traefik"
+    restart: unless-stopped
     command:
       - "--log.level=DEBUG"
       - "--api.insecure=true"
@@ -43,6 +45,7 @@ services:
           # TODO: replace by https://gist.github.com/boomshadow/20677ef02f110e448ee058ae6149af3a
           - whoami.localhost 
           - vaultwarden.localhost
+          - harness.localhost
   whoami:
     image: "traefik/whoami"
     container_name: "simple-service"
@@ -64,3 +67,21 @@ services:
       - "traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.localhost`)"
       - "traefik.http.routers.vaultwarden.entrypoints=websecure"
       - "traefik.http.routers.vaultwarden.tls.certresolver=myresolver"
+  harness:
+    image: harness/harness
+    container_name: harness
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - "GITNESS_URL_BASE=https://harness.localhost"
+      - "GITNESS_URL_CONTAINER=https://harness.localhost"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./harness:/data"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.harness.rule=Host(`harness.localhost`)"
+      - "traefik.http.routers.harness.entrypoints=websecure"
+      - "traefik.http.routers.harness.tls.certresolver=myresolver"
+      - "traefik.http.services.harness.loadbalancer.server.port=3000"
