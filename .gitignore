@@ -1,5 +1,5 @@
-.env
-step-ca
-letsencrypt
-vw-data
 harness
+letsencrypt
+step-ca
+vw-data
+.env
