@@ -87,3 +87,25 @@ which return
 ```json
 {"status":"ok"}
 ```
+
+
+Below is the same command only with openssl CLI
+```shell
+openssl s_client -quiet -connect localhost:9000 2>/dev/null <<EOF
+GET /health HTTP/1.1
+Host: localhost:9000
+
+EOF
+```
+
+which return
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+X-Request-Id: 12f2c40f-bf84-46dc-8fe0-c1076420d00c
+Date: Mon, 14 Apr 2025 15:15:52 GMT
+Content-Length: 16
+Connection: close
+
+{"status":"ok"}
+```
