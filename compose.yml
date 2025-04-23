@@ -48,6 +48,7 @@ services:
           - harness.localhost
           - dashy.localhost
           - atuin.localhost
+          - grafana.localhost
   whoami:
     image: "traefik/whoami"
     container_name: "simple-service"
@@ -145,3 +146,47 @@ services:
       POSTGRES_USER: ${ATUIN_DB_USERNAME}
       POSTGRES_PASSWORD: ${ATUIN_DB_PASSWORD}
       POSTGRES_DB: ${ATUIN_DB_NAME}
+
+  cadvisor:
+    container_name: cadvisor
+    image: gcr.io/cadvisor/cadvisor:latest
+    volumes: 
+      - "/:/rootfs"
+      - "/var/run:/var/run"
+      - "/sys:/sys"
+      - "/var/lib/docker/:/var/lib/docker"
+      - "/dev/disk/:/dev/disk"
+    privileged: true
+    devices: 
+      - "/dev/kmsg"
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    volumes: 
+      - "./prometheus/config.yml:/etc/prometheus/prometheus.yml"
+    depends_on:
+      - cadvisor
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    environment:
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - DS_PROMETHEUS=prometheus
+    volumes: 
+      - "grafana-data:/var/lib/grafana"
+      - "./grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml"
+      - "./grafana/dashboard.json:/var/lib/grafana/dashboards/dashboard.json"
+      - "./grafana/default.yaml:/etc/grafana/provisioning/dashboards/default.yaml"
+    depends_on:
+      - prometheus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.localhost`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls.certresolver=myresolver"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+volumes:
+  grafana-data:
