@@ -2,17 +2,40 @@
 # For configuration options and examples, please see:
 # https://gethomepage.dev/configs/services/
 
-- My First Group:
-    - My First Service:
-        href: http://localhost/
-        description: Homepage is awesome
+- Worklab:
+    - Grafana:
+        href: https://grafana.localhost/
+        description: Les métriques d'utilisation de vos resources.
+        container: grafana
+        # widget:
+        #     type: grafana
+        #     url: http://grafana:3000
+        #     username: admin
+        #     password: 
+    - Vaultwarden:
+        href: https://vaultwarden.localhost/
+        description: Vaultwarden is a password manager for securely storing, managing, and sharing sensitive online data such as passwords and passkeys.
+        container: vaultwarden
+    - Harness Open Source:
+        href: https://harness.localhost/
+        description: Seamless Git integration, fast pipelines, and hosted development environments.
+        container: harness
 
-- My Second Group:
-    - My Second Service:
-        href: http://localhost/
-        description: Homepage is the best
-
-- My Third Group:
-    - My Third Service:
-        href: http://localhost/
-        description: Homepage is 😎
+- Services:
+    - Traefik:
+        href: http://localhost:8080/
+        description: Votre reverse proxy local.
+        container: traefik
+        widget:
+            type: traefik
+            url: http://traefik:8080
+    - Atuin:
+        href: https://atuin.localhost/
+        description: Sync, search and backup shell history with Atuin
+        container: atuin
+    - Prometheus:
+        container: prometheus
+        widget:
+            type: prometheus
+            url: http://prometheus:9090
+    
