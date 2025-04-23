@@ -46,6 +46,8 @@ services:
           - whoami.localhost 
           - vaultwarden.localhost
           - harness.localhost
+          - dashy.localhost
+          - atuin.localhost
   whoami:
     image: "traefik/whoami"
     container_name: "simple-service"
@@ -74,14 +76,72 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - "GITNESS_URL_BASE=https://harness.localhost"
       - "GITNESS_URL_CONTAINER=https://harness.localhost"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./harness:/data"
+      # TIPS: required in order to trust tls from the host. ex. proxy with tls rewrite
+      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.harness.rule=Host(`harness.localhost`)"
       - "traefik.http.routers.harness.entrypoints=websecure"
       - "traefik.http.routers.harness.tls.certresolver=myresolver"
       - "traefik.http.services.harness.loadbalancer.server.port=3000"
+  dashy:
+    # To build from source, replace 'image: lissy93/dashy' with 'build: .'
+    # build: .
+    image: lissy93/dashy
+    container_name: dashy
+    # Pass in your config file below, by specifying the path on your host machine
+    volumes:
+      - ./dashy/my-config.yml:/app/user-data/conf.yml
+    # Set any environmental variables
+    environment:
+      - NODE_ENV=production
+    # Specify your user ID and group ID. You can find this by running `id -u` and `id -g`
+    #  - UID=1000
+    #  - GID=1000
+    # Specify restart policy
+    restart: unless-stopped
+    # Configure healthchecks
+    healthcheck:
+      test: ['CMD', 'node', '/app/services/healthcheck']
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashy.rule=Host(`dashy.localhost`)"
+      - "traefik.http.routers.dashy.entrypoints=websecure"
+      - "traefik.http.routers.dashy.tls.certresolver=myresolver"
+  atuin:
+    restart: unless-stopped
+    image: ghcr.io/atuinsh/atuin:v18.5.0
+    container_name: atuin
+    command: server start
+    volumes:
+      - "./atuin/config:/config"
+    links:
+      - postgresql:db
+    environment:
+      ATUIN_HOST: "0.0.0.0"
+      ATUIN_OPEN_REGISTRATION: "true"
+      ATUIN_DB_URI: postgres://$ATUIN_DB_USERNAME:$ATUIN_DB_PASSWORD@db/$ATUIN_DB_NAME
+      RUST_LOG: info,atuin_server=debug
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.atuin.rule=Host(`atuin.localhost`)"
+      - "traefik.http.routers.atuin.entrypoints=websecure"
+      - "traefik.http.routers.atuin.tls.certresolver=myresolver"
+      - "traefik.http.services.atuin.loadbalancer.server.port=8888"
+  postgresql:
+    image: postgres:14
+    restart: unless-stopped
+    volumes: # Don't remove permanent storage for index database files!
+      - "./atuin/database:/var/lib/postgresql/data/"
+    environment:
+      POSTGRES_USER: ${ATUIN_DB_USERNAME}
+      POSTGRES_PASSWORD: ${ATUIN_DB_PASSWORD}
+      POSTGRES_DB: ${ATUIN_DB_NAME}

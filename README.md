@@ -77,8 +77,11 @@ X.509v3 Root CA Certificate (ECDSA P-256) [Serial: 2385...8800]
 
 ## test
 
+### in your browser
 Now you can browse https://localhost:9000/health withouth error
 
+
+### with humao.rest-client
 ```http
 GET https://localhost:9000/health
 ```
@@ -88,6 +91,7 @@ which return
 {"status":"ok"}
 ```
 
+### with openssl directly 
 
 Below is the same command only with openssl CLI
 ```shell
