@@ -3,3 +3,4 @@ letsencrypt
 step-ca
 vw-data
 .env
+homepage/logs

@@ -46,6 +46,7 @@ services:
           - whoami.localhost 
           - vaultwarden.localhost
           - harness.localhost
+          - homepage.localhost
           - atuin.localhost
           - grafana.localhost
   whoami:
@@ -88,6 +89,20 @@ services:
       - "traefik.http.routers.harness.entrypoints=websecure"
       - "traefik.http.routers.harness.tls.certresolver=myresolver"
       - "traefik.http.services.harness.loadbalancer.server.port=3000"
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    volumes:
+      - ./homepage:/app/config # Make sure your local config directory exists
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: homepage.localhost # required, may need port. See gethomepage.dev/installation/#homepage_allowed_hosts
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homepage.rule=Host(`homepage.localhost`)"
+      - "traefik.http.routers.homepage.entrypoints=websecure"
+      - "traefik.http.routers.homepage.tls.certresolver=myresolver"
+      - "traefik.http.services.homepage.loadbalancer.server.port=3000"
+
   atuin:
     restart: unless-stopped
     image: ghcr.io/atuinsh/atuin:v18.5.0
