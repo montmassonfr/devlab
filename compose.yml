@@ -51,6 +51,7 @@ services:
           - homepage.localhost
           - atuin.localhost
           - grafana.localhost
+          - memos.localhost
   whoami:
     image: "traefik/whoami"
     container_name: "simple-service"
@@ -105,6 +106,18 @@ services:
       - "traefik.http.routers.homepage.entrypoints=websecure"
       - "traefik.http.routers.homepage.tls.certresolver=myresolver"
       - "traefik.http.services.homepage.loadbalancer.server.port=3000"
+  memos:
+    image: neosmemo/memos:stable
+    container_name: memos
+    restart: unless-stopped
+    volumes:
+      - ~/.memos/:/var/opt/memos
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.memos.rule=Host(`memos.localhost`)"
+      - "traefik.http.routers.memos.entrypoints=websecure"
+      - "traefik.http.routers.memos.tls.certresolver=myresolver"
+      - "traefik.http.services.memos.loadbalancer.server.port=5230"
 
   atuin:
     restart: unless-stopped

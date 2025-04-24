@@ -3,6 +3,10 @@
 # https://gethomepage.dev/configs/services/
 
 - Worklab:
+    - Memos:
+        href: https://memos.localhost/
+        description: Effortlessly craft your impactful content
+        container: memos
     - Grafana:
         href: https://grafana.localhost/
         description: Les métriques d'utilisation de vos resources.
