@@ -94,6 +94,7 @@ services:
       - "traefik.http.services.harness.loadbalancer.server.port=3000"
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
+    restart: unless-stopped
     container_name: homepage
     volumes:
       - ./homepage:/app/config # Make sure your local config directory exists
@@ -165,9 +166,9 @@ services:
 
   loki:
     image: grafana/loki:latest
+    restart: unless-stopped
     container_name: loki
     command: -config.file=/etc/loki/local-config.yaml
-    restart: unless-stopped
 
   promtail:
     image: grafana/promtail:latest
@@ -181,6 +182,7 @@ services:
       - loki
   prometheus:
     container_name: prometheus
+    restart: unless-stopped
     image: prom/prometheus:latest
     volumes: 
       - "./prometheus/config.yml:/etc/prometheus/prometheus.yml"
@@ -189,6 +191,7 @@ services:
 
   grafana:
     container_name: grafana
+    restart: unless-stopped
     image: grafana/grafana:latest
     environment:
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
@@ -207,6 +210,5 @@ services:
       - "traefik.http.routers.grafana.entrypoints=websecure"
       - "traefik.http.routers.grafana.tls.certresolver=myresolver"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
-
 volumes:
   grafana-data:
