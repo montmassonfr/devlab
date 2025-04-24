@@ -14,6 +14,8 @@ services:
      - "./step-ca:/home/step"
    ports:
      - "9000:9000"
+   networks:
+     step-ca:
 
   traefik:
     image: "traefik:v3.3"
@@ -41,6 +43,7 @@ services:
       # TIPS: required in order to trust tls with https://step-ca:9000, must bootstrap docker host with step-ca see README.md
       - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
     networks:
+      step-ca:
       default:
         aliases:
           # TIPS: used in order step-ca resolved it to traefik during acme challenge
@@ -60,6 +63,8 @@ services:
       - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
       - "traefik.http.routers.whoami.entrypoints=websecure"
       - "traefik.http.routers.whoami.tls.certresolver=myresolver"
+    networks:
+      default:
   vaultwarden:
     image: vaultwarden/server:latest
     container_name: vaultwarden
@@ -73,6 +78,8 @@ services:
       - "traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.localhost`)"
       - "traefik.http.routers.vaultwarden.entrypoints=websecure"
       - "traefik.http.routers.vaultwarden.tls.certresolver=myresolver"
+    networks:
+      default:
   harness:
     image: harness/harness
     container_name: harness
@@ -92,6 +99,8 @@ services:
       - "traefik.http.routers.harness.entrypoints=websecure"
       - "traefik.http.routers.harness.tls.certresolver=myresolver"
       - "traefik.http.services.harness.loadbalancer.server.port=3000"
+    networks:
+      default:
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     restart: unless-stopped
@@ -107,6 +116,9 @@ services:
       - "traefik.http.routers.homepage.entrypoints=websecure"
       - "traefik.http.routers.homepage.tls.certresolver=myresolver"
       - "traefik.http.services.homepage.loadbalancer.server.port=3000"
+    networks:
+      default:
+      prometheus:
   memos:
     image: neosmemo/memos:stable
     container_name: memos
@@ -119,6 +131,8 @@ services:
       - "traefik.http.routers.memos.entrypoints=websecure"
       - "traefik.http.routers.memos.tls.certresolver=myresolver"
       - "traefik.http.services.memos.loadbalancer.server.port=5230"
+    networks:
+      default:
 
   atuin:
     restart: unless-stopped
@@ -128,7 +142,7 @@ services:
     volumes:
       - "./atuin/config:/config"
     links:
-      - postgresql:db
+      - atuin-pg:db
     environment:
       ATUIN_HOST: "0.0.0.0"
       ATUIN_OPEN_REGISTRATION: "true"
@@ -140,7 +154,11 @@ services:
       - "traefik.http.routers.atuin.entrypoints=websecure"
       - "traefik.http.routers.atuin.tls.certresolver=myresolver"
       - "traefik.http.services.atuin.loadbalancer.server.port=8888"
-  postgresql:
+    networks:
+      atuin:
+      default:
+      
+  atuin-pg:
     image: postgres:14
     restart: unless-stopped
     volumes: # Don't remove permanent storage for index database files!
@@ -149,6 +167,8 @@ services:
       POSTGRES_USER: ${ATUIN_DB_USERNAME}
       POSTGRES_PASSWORD: ${ATUIN_DB_PASSWORD}
       POSTGRES_DB: ${ATUIN_DB_NAME}
+    networks:
+      atuin:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
@@ -163,12 +183,17 @@ services:
     privileged: true
     devices: 
       - "/dev/kmsg"
+    networks:
+      cadvisor:
 
   loki:
     image: grafana/loki:latest
     restart: unless-stopped
     container_name: loki
     command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      loki:
+      promtail:
 
   promtail:
     image: grafana/promtail:latest
@@ -180,6 +205,8 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers
     depends_on:
       - loki
+    networks:
+      promtail:
   prometheus:
     container_name: prometheus
     restart: unless-stopped
@@ -188,6 +215,9 @@ services:
       - "./prometheus/config.yml:/etc/prometheus/prometheus.yml"
     depends_on:
       - cadvisor
+    networks:
+      prometheus:
+      cadvisor:
 
   grafana:
     container_name: grafana
@@ -210,5 +240,18 @@ services:
       - "traefik.http.routers.grafana.entrypoints=websecure"
       - "traefik.http.routers.grafana.tls.certresolver=myresolver"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+    networks:
+      default:
+      prometheus:
+      loki:
+
 volumes:
   grafana-data:
+
+networks:
+  step-ca:
+  atuin:
+  prometheus:
+  cadvisor:
+  loki:
+  promtail:
