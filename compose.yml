@@ -127,7 +127,7 @@ services:
     restart: unless-stopped
     user: "${UID}:${GID}"
     volumes:
-      - ~/.memos/:/var/opt/memos:Z
+      - ./data/memos/:/var/opt/memos:Z
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.memos.rule=Host(`memos.localhost`)"
