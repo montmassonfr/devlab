@@ -1,22 +1,31 @@
 name: worklab
 
 services:
+  # inspired from https://theorangeone.net/posts/expose-docker-internal-dns/
+  coredns:
+    image: coredns/coredns
+    container_name: "coredns"
+    restart: unless-stopped
+    command: -conf /etc/coredns/Corefile
+    volumes:
+      - ./coredns:/etc/coredns
+    networks:
+      step-ca:
+        ipv4_address: 172.29.1.1
   step-ca:
-   image: smallstep/step-ca
-   restart: unless-stopped
-   environment:
-     - "DOCKER_STEPCA_INIT_NAME=Smallstep"
-     # required in order traefik trust to call https://step-ca:9000
-     - "DOCKER_STEPCA_INIT_DNS_NAMES=localhost,step-ca" 
-     - "DOCKER_STEPCA_INIT_REMOTE_MANAGEMENT=true"
-     - "DOCKER_STEPCA_INIT_ACME=true"
-   volumes:
-     - "./step-ca:/home/step"
-   ports:
-     - "9000:9000"
-   networks:
-     step-ca:
-
+    image: smallstep/step-ca
+    restart: unless-stopped
+    dns: 172.29.1.1
+    environment:
+      - "DOCKER_STEPCA_INIT_NAME=Smallstep"
+      # required in order traefik trust to call https://step-ca:9000
+      - "DOCKER_STEPCA_INIT_DNS_NAMES=localhost,step-ca" 
+      - "DOCKER_STEPCA_INIT_REMOTE_MANAGEMENT=true"
+      - "DOCKER_STEPCA_INIT_ACME=true"
+    volumes:
+      - "./step-ca:/home/step"
+    networks:
+      step-ca:
   traefik:
     image: "traefik:v3.3"
     container_name: "traefik"
@@ -46,17 +55,8 @@ services:
       - step-ca
     networks:
       step-ca:
+        ipv4_address: 172.29.1.2
       default:
-        aliases:
-          # TIPS: used in order step-ca resolved it to traefik during acme challenge
-          # TODO: replace by https://gist.github.com/boomshadow/20677ef02f110e448ee058ae6149af3a
-          - whoami.localhost 
-          - vaultwarden.localhost
-          - harness.localhost
-          - homepage.localhost
-          - atuin.localhost
-          - grafana.localhost
-          - memos.localhost
   whoami:
     image: "traefik/whoami"
     container_name: "simple-service"
@@ -255,6 +255,10 @@ volumes:
 
 networks:
   step-ca:
+    ipam:
+      config:
+        - subnet: 172.29.0.0/16
+          ip_range: 172.29.5.0/24
   atuin:
   prometheus:
   cadvisor:

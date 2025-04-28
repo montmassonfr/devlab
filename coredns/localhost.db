@@ -1,0 +1,11 @@
+$ORIGIN localhost.
+@   IN  SOA ns.localhost. admin.localhost. (
+        1       ; Serial
+        3600    ; Refresh
+        1800    ; Retry
+        604800  ; Expire
+        86400   ; Minimum TTL
+    )
+    IN  NS  ns.localhost.
+ns  IN  A   172.29.1.1
+*   IN  A   172.29.1.2
