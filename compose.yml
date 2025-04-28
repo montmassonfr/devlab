@@ -37,6 +37,9 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--entryPoints.web.address=:80"
       - "--entryPoints.websecure.address=:443"
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.addEntryPointsLabels=true"
+      - "--metrics.prometheus.addServicesLabels=true"
       - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
       - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.myresolver.acme.caserver=https://step-ca:9000/acme/acme/directory"
@@ -45,7 +48,6 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080"
     volumes:
       - "./letsencrypt:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
@@ -56,6 +58,7 @@ services:
     networks:
       step-ca:
         ipv4_address: 172.29.1.2
+      traefik:
       default:
   whoami:
     image: "traefik/whoami"
@@ -223,6 +226,7 @@ services:
     networks:
       prometheus:
       cadvisor:
+      traefik:
 
   grafana:
     container_name: grafana
@@ -264,3 +268,4 @@ networks:
   cadvisor:
   loki:
   promtail:
+  traefik:

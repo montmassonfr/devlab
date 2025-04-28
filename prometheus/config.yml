@@ -11,3 +11,9 @@ scrape_configs:
   - job_name: "cadvisor"
     static_configs:
       - targets: ["cadvisor:8080"]
+
+  # Config to scrape data from the traefik service
+  - job_name: 'traefik'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['traefik:8080']

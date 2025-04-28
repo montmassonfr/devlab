@@ -27,7 +27,6 @@
 
 - Services:
     - Traefik:
-        href: http://localhost:8080/
         description: Votre reverse proxy local.
         container: traefik
         widget:
