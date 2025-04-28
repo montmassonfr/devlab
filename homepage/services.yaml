@@ -34,7 +34,7 @@
             type: traefik
             url: http://traefik:8080
     - Atuin:
-        href: https://atuin.localhost/
+        href: https://atuin.localhost/healthz
         description: Sync, search and backup shell history with Atuin
         container: atuin
     - Prometheus:
