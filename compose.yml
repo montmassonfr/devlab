@@ -1,8 +1,19 @@
 name: worklab
 
+x-logging: &logging
+  logging:
+    driver: loki
+    options: # note: the ip is the ip we will assign later to loki in this file
+      loki-url: "http://172.30.1.1:3100/loki/api/v1/push"
+      mode: non-blocking
+      max-buffer-size: 4m
+      loki-batch-size: 400
+      loki-retries: "3"
+
 services:
   # inspired from https://theorangeone.net/posts/expose-docker-internal-dns/
   coredns:
+    <<: *logging
     image: coredns/coredns
     container_name: "coredns"
     restart: unless-stopped
@@ -13,6 +24,7 @@ services:
       step-ca:
         ipv4_address: 172.29.1.1
   step-ca:
+    <<: *logging
     image: smallstep/step-ca
     restart: unless-stopped
     dns: 172.29.1.1
@@ -27,6 +39,7 @@ services:
     networks:
       step-ca:
   traefik:
+    <<: *logging
     image: "traefik:v3.3"
     container_name: "traefik"
     restart: unless-stopped
@@ -60,17 +73,8 @@ services:
         ipv4_address: 172.29.1.2
       traefik:
       default:
-  whoami:
-    image: "traefik/whoami"
-    container_name: "simple-service"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
-      - "traefik.http.routers.whoami.entrypoints=websecure"
-      - "traefik.http.routers.whoami.tls.certresolver=myresolver"
-    networks:
-      default:
   vaultwarden:
+    <<: *logging
     image: vaultwarden/server:latest
     container_name: vaultwarden
     restart: unless-stopped
@@ -86,6 +90,7 @@ services:
     networks:
       default:
   harness:
+    <<: *logging
     image: harness/harness
     container_name: harness
     restart: unless-stopped
@@ -107,6 +112,7 @@ services:
     networks:
       default:
   homepage:
+    <<: *logging
     image: ghcr.io/gethomepage/homepage:latest
     restart: unless-stopped
     container_name: homepage
@@ -125,6 +131,7 @@ services:
       default:
       prometheus:
   memos:
+    <<: *logging
     image: neosmemo/memos:stable
     container_name: memos
     restart: unless-stopped
@@ -143,6 +150,7 @@ services:
       default:
 
   atuin:
+    <<: *logging
     restart: unless-stopped
     image: ghcr.io/atuinsh/atuin:v18.5.0
     container_name: atuin
@@ -167,6 +175,7 @@ services:
       default:
       
   atuin-pg:
+    <<: *logging
     image: postgres:14
     restart: unless-stopped
     volumes: # Don't remove permanent storage for index database files!
@@ -195,32 +204,23 @@ services:
       cadvisor:
 
   loki:
-    image: grafana/loki:latest
     restart: unless-stopped
-    container_name: loki
+    image: grafana/loki:latest
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki-data:/loki
     command: -config.file=/etc/loki/local-config.yaml
     networks:
       loki:
-      promtail:
+        ipv4_address: 172.30.1.1
 
-  promtail:
-    image: grafana/promtail:latest
-    container_name: promtail
-    restart: unless-stopped
-    volumes:
-      - ./promtail/config.yaml:/etc/promtail/promtail-config.yaml
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /var/lib/docker/containers:/var/lib/docker/containers
-    depends_on:
-      - loki
-    networks:
-      promtail:
   prometheus:
     container_name: prometheus
     restart: unless-stopped
     image: prom/prometheus:latest
     volumes: 
       - "./prometheus/config.yml:/etc/prometheus/prometheus.yml"
+      - prom-data:/prometheus
     depends_on:
       - cadvisor
     networks:
@@ -253,9 +253,10 @@ services:
       default:
       prometheus:
       loki:
-
 volumes:
   grafana-data:
+  loki-data:
+  prom-data:
 
 networks:
   step-ca:
@@ -267,5 +268,8 @@ networks:
   prometheus:
   cadvisor:
   loki:
-  promtail:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+          ip_range: 172.30.5.0/24
   traefik:

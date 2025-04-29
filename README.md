@@ -6,6 +6,14 @@ This project initiate a devlab with all the tools required to develop on you wor
 
 In order to use your own ca you must start step-ca and configure your workstation to trust it.
 
+## Install loki driver
+
+In order to centralize log in grafana you must install docker loki driver with command:
+
+```bash
+docker plugin install grafana/loki-docker-driver:3.3.2-amd64 --alias loki --grant-all-permissions
+```
+
 ## Start dev lab
 
 Launch step-ca ony
