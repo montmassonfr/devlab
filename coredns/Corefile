@@ -2,6 +2,7 @@
     errors
     cancel
     prometheus coredns:9153
+    log
 
     file /etc/coredns/localhost.db localhost
     forward . 127.0.0.11
