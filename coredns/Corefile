@@ -1,6 +1,7 @@
 . {
     errors
     cancel
+    prometheus coredns:9153
 
     file /etc/coredns/localhost.db localhost
     forward . 127.0.0.11
