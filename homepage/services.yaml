@@ -2,20 +2,11 @@
 # For configuration options and examples, please see:
 # https://gethomepage.dev/configs/services/
 
-- Worklab:
+- User Services:
     - Memos:
         href: https://memos.localhost/
-        description: Effortlessly craft your impactful content
+        description: Effortlessly craft your impactful content.
         container: memos
-    - Grafana:
-        href: https://grafana.localhost/
-        description: Les métriques d'utilisation de vos resources.
-        container: grafana
-        # widget:
-        #     type: grafana
-        #     url: http://grafana:3000
-        #     username: admin
-        #     password: 
     - Vaultwarden:
         href: https://vaultwarden.localhost/
         description: Vaultwarden is a password manager for securely storing, managing, and sharing sensitive online data such as passwords and passkeys.
@@ -24,21 +15,63 @@
         href: https://harness.localhost/
         description: Seamless Git integration, fast pipelines, and hosted development environments.
         container: harness
+    - Atuin:
+        href: https://docs.atuin.sh/self-hosting/usage/#client-setup
+        description: |
+            Sync, search and backup shell history with Atuin.
+            In order use a self hosted server with Atuin, you’ll have to set up the sync_address in the config file at ~/.config/atuin/config.toml. 
+            See the config page for more details on how to set the sync_address. 
+            You can set the environment variable ATUIN_SYNC_ADDRESS to the correct host ie.: ATUIN_SYNC_ADDRESS=https://atuin.localhost
+        container: atuin
 
-- Services:
+- Security:
+    - step-ca:
+        href: https://localhost:9000/health
+        description: | 
+            Step-ca is an online Certificate Authority (CA) for secure, automated X. 509 and SSH certificate management. 
+            It signs tls certificates for HTTP services with the ACME HTTP-01 challenge.
+        container: step-ca
     - Traefik:
-        description: Votre reverse proxy local.
+        description: |
+            Traefik is a modern, cloud-native reverse proxy and load balancer that simplifies deploying multi-service applications. 
+            It automatically discovers and routes traffic to backend services, eliminating the need for manual configuration. 
+            It serves secure web services signed by step-ca Certificate authority at *.localhost.  
         container: traefik
         widget:
             type: traefik
             url: http://traefik:8080
-    - Atuin:
-        href: https://atuin.localhost/healthz
-        description: Sync, search and backup shell history with Atuin
-        container: atuin
+    - CoreDNS:
+        description: A flexible, extensible DNS server, often used in Kubernetes clusters, that uses a plugin-based architecture to provide a wide range of DNS functionalities
+            It resolves DNS request for *.localhost domain to the internal ip of the traefik reverse in the step-ca network in order ACME HTTP-01 challenge succeed.
+        container: coredns
+- Observability:
+    - Grafana:
+        href: https://grafana.localhost/
+        description: | 
+            Web-based platform used for visualizing and monitoring data. 
+            It allows users to query, visualize, and analyze time-series data from various sources, including metrics, logs, and traces.
+            It receives log from loki and time series data from prometheus. 
+        container: grafana
+        # widget:
+        #     type: grafana
+        #     url: http://grafana:3000
+        #     username: admin
+        #     password: 
     - Prometheus:
         container: prometheus
+        description: Scrap metrics for all compatible services (traefik, cadvisor and coredns yet)
         widget:
             type: prometheus
             url: http://prometheus:9090
-    
+    - Loki:
+        description: Loki is a log aggregation system designed to store and query logs from all your applications and infrastructure. 
+        container: loki
+    - cAdvisor:
+        description: cAdvisor, short for Container Advisor, is an open-source tool to monitor containers
+        container: cadvisor
+- Other:
+    - Postgresql Atuin:
+        description: |
+            Object-relational database management system (ORDBMS) known for its reliability, flexibility, and support of open technical standards.
+            This db is dedicated to Atuin
+        container: atuin-pg

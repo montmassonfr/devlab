@@ -28,9 +28,12 @@ services:
       coredns:
   step-ca:
     <<: *logging
+    container_name: "step-ca"
     image: smallstep/step-ca
     restart: unless-stopped
     dns: 172.29.1.1
+    ports:
+      - "9000:9000"
     environment:
       - "DOCKER_STEPCA_INIT_NAME=Smallstep"
       # required in order traefik trust to call https://step-ca:9000
@@ -198,6 +201,7 @@ services:
   atuin-pg:
     <<: *logging
     image: postgres:14
+    container_name: atuin-pg
     restart: unless-stopped
     volumes: # Don't remove permanent storage for index database files!
       - "./atuin/database:/var/lib/postgresql/data/"
@@ -227,6 +231,7 @@ services:
       cadvisor:
 
   loki:
+    container_name: loki
     restart: unless-stopped
     image: grafana/loki:latest
     volumes:
