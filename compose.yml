@@ -82,7 +82,12 @@ services:
       step-ca:
         ipv4_address: 172.29.1.2
       traefik:
-      default:
+      atuin:
+      vaultwarden:
+      grafana:
+      harness:
+      homepage:
+      memos:
   vaultwarden:
     <<: *logging
     image: vaultwarden/server:latest
@@ -97,11 +102,12 @@ services:
       - traefik
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=vaultwarden"
       - "traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.localhost`)"
       - "traefik.http.routers.vaultwarden.entrypoints=websecure"
       - "traefik.http.routers.vaultwarden.tls.certresolver=myresolver"
     networks:
-      default:
+      vaultwarden:
   harness:
     <<: *logging
     image: harness/harness
@@ -121,12 +127,13 @@ services:
       - traefik
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=harness"
       - "traefik.http.routers.harness.rule=Host(`harness.localhost`)"
       - "traefik.http.routers.harness.entrypoints=websecure"
       - "traefik.http.routers.harness.tls.certresolver=myresolver"
       - "traefik.http.services.harness.loadbalancer.server.port=3000"
     networks:
-      default:
+      harness:
   homepage:
     <<: *logging
     image: ghcr.io/gethomepage/homepage:latest
@@ -142,13 +149,15 @@ services:
       - traefik
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=homepage"
       - "traefik.http.routers.homepage.rule=Host(`homepage.localhost`)"
       - "traefik.http.routers.homepage.entrypoints=websecure"
       - "traefik.http.routers.homepage.tls.certresolver=myresolver"
       - "traefik.http.services.homepage.loadbalancer.server.port=3000"
     networks:
-      default:
+      homepage:
       prometheus:
+      grafana:
   memos:
     <<: *logging
     image: neosmemo/memos:stable
@@ -159,6 +168,7 @@ services:
       - ./data/memos/:/var/opt/memos:Z
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=memos"
       - "traefik.http.routers.memos.rule=Host(`memos.localhost`)"
       - "traefik.http.routers.memos.entrypoints=websecure"
       - "traefik.http.routers.memos.tls.certresolver=myresolver"
@@ -167,7 +177,7 @@ services:
       - loki
       - traefik
     networks:
-      default:
+      memos:
 
   atuin:
     <<: *logging
@@ -190,13 +200,14 @@ services:
       - atuin-pg
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=atuin"
       - "traefik.http.routers.atuin.rule=Host(`atuin.localhost`)"
       - "traefik.http.routers.atuin.entrypoints=websecure"
       - "traefik.http.routers.atuin.tls.certresolver=myresolver"
       - "traefik.http.services.atuin.loadbalancer.server.port=8888"
     networks:
       atuin:
-      default:
+      atuin-pg:
       
   atuin-pg:
     <<: *logging
@@ -212,7 +223,7 @@ services:
     depends_on:
       - loki
     networks:
-      atuin:
+      atuin-pg:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
@@ -275,26 +286,33 @@ services:
       - loki
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=grafana"
       - "traefik.http.routers.grafana.rule=Host(`grafana.localhost`)"
       - "traefik.http.routers.grafana.entrypoints=websecure"
       - "traefik.http.routers.grafana.tls.certresolver=myresolver"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
     networks:
-      default:
       prometheus:
       loki:
+      grafana:
 volumes:
   grafana-data:
   loki-data:
   prom-data:
 
 networks:
+  atuin:
+  vaultwarden:
+  grafana:
+  harness:
+  homepage:
+  memos:
   step-ca:
     ipam:
       config:
         - subnet: 172.29.0.0/16
           ip_range: 172.29.5.0/24
-  atuin:
+  atuin-pg:
   prometheus:
   cadvisor:
   loki:
