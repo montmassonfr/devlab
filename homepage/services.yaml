@@ -2,15 +2,7 @@
 # For configuration options and examples, please see:
 # https://gethomepage.dev/configs/services/
 
-- User Services:
-    - Memos:
-        href: https://memos.localhost/
-        description: Effortlessly craft your impactful content.
-        container: memos
-    - Vaultwarden:
-        href: https://vaultwarden.localhost/
-        description: Vaultwarden is a password manager for securely storing, managing, and sharing sensitive online data such as passwords and passkeys.
-        container: vaultwarden
+- Dev:
     - Harness Open Source:
         href: https://harness.localhost/
         description: Seamless Git integration, fast pipelines, and hosted development environments.
@@ -24,8 +16,8 @@
             You can set the environment variable ATUIN_SYNC_ADDRESS to the correct host ie.: ATUIN_SYNC_ADDRESS=https://atuin.localhost
         container: atuin
 
-- Security:
-    - step-ca:
+- Sec:
+    - Step CA:
         href: https://localhost:9000/health
         description: | 
             Step-ca is an online Certificate Authority (CA) for secure, automated X. 509 and SSH certificate management. 
@@ -44,7 +36,7 @@
         description: A flexible, extensible DNS server, often used in Kubernetes clusters, that uses a plugin-based architecture to provide a wide range of DNS functionalities
             It resolves DNS request for *.localhost domain to the internal ip of the traefik reverse in the step-ca network in order ACME HTTP-01 challenge succeed.
         container: coredns
-- Observability:
+- Ops:
     - Grafana:
         href: https://grafana.localhost/
         description: | 
@@ -69,9 +61,19 @@
     - cAdvisor:
         description: cAdvisor, short for Container Advisor, is an open-source tool to monitor containers
         container: cadvisor
-- Other:
+- Infrastructure:
     - Postgresql Atuin:
         description: |
             Object-relational database management system (ORDBMS) known for its reliability, flexibility, and support of open technical standards.
             This db is dedicated to Atuin
         container: atuin-pg
+
+- Services:
+    - Memos:
+        href: https://memos.localhost/
+        description: Effortlessly craft your impactful content.
+        container: memos
+    - Vaultwarden:
+        href: https://vaultwarden.localhost/
+        description: Vaultwarden is a password manager for securely storing, managing, and sharing sensitive online data such as passwords and passkeys.
+        container: vaultwarden
