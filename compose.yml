@@ -18,8 +18,6 @@ services:
     container_name: "coredns"
     restart: unless-stopped
     command: -conf /etc/coredns/Corefile
-    depends_on:
-      - loki
     volumes:
       - ./coredns:/etc/coredns
     networks:
@@ -41,12 +39,12 @@ services:
       - "DOCKER_STEPCA_INIT_REMOTE_MANAGEMENT=true"
       - "DOCKER_STEPCA_INIT_ACME=true"
     depends_on:
-      - loki
       - coredns
     volumes:
       - "./step-ca:/home/step"
     networks:
       step-ca:
+      dmz:
   traefik:
     <<: *logging
     image: "traefik:v3.3"
@@ -76,9 +74,9 @@ services:
       # TIPS: required in order to trust tls with https://step-ca:9000, must bootstrap docker host with step-ca see README.md
       - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
     depends_on:
-      - loki
       - step-ca
     networks:
+      dmz:
       step-ca:
         ipv4_address: 172.29.1.2
       traefik:
@@ -98,7 +96,6 @@ services:
     volumes:
       - ./vw-data/:/data/
     depends_on:
-      - loki
       - traefik
     labels:
       - "traefik.enable=true"
@@ -106,6 +103,7 @@ services:
       - "traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.localhost`)"
       - "traefik.http.routers.vaultwarden.entrypoints=websecure"
       - "traefik.http.routers.vaultwarden.tls.certresolver=myresolver"
+      - "traefik.http.services.vaultwarden.loadbalancer.server.port=80"
     networks:
       vaultwarden:
   harness:
@@ -123,7 +121,6 @@ services:
       # TIPS: required in order to trust tls from the host. ex. proxy with tls rewrite
       - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
     depends_on:
-      - loki
       - traefik
     labels:
       - "traefik.enable=true"
@@ -145,7 +142,6 @@ services:
     environment:
       HOMEPAGE_ALLOWED_HOSTS: homepage.localhost # required, may need port. See gethomepage.dev/installation/#homepage_allowed_hosts
     depends_on:
-      - loki
       - traefik
     labels:
       - "traefik.enable=true"
@@ -174,7 +170,6 @@ services:
       - "traefik.http.routers.memos.tls.certresolver=myresolver"
       - "traefik.http.services.memos.loadbalancer.server.port=5230"
     depends_on:
-      - loki
       - traefik
     networks:
       memos:
@@ -195,7 +190,6 @@ services:
       ATUIN_DB_URI: postgres://$ATUIN_DB_USERNAME:$ATUIN_DB_PASSWORD@db/$ATUIN_DB_NAME
       RUST_LOG: info,atuin_server=debug
     depends_on:
-      - loki
       - traefik
       - atuin-pg
     labels:
@@ -220,8 +214,6 @@ services:
       POSTGRES_USER: ${ATUIN_DB_USERNAME}
       POSTGRES_PASSWORD: ${ATUIN_DB_PASSWORD}
       POSTGRES_DB: ${ATUIN_DB_NAME}
-    depends_on:
-      - loki
     networks:
       atuin-pg:
 
@@ -302,23 +294,37 @@ volumes:
 
 networks:
   atuin:
+    internal: true
   vaultwarden:
+    internal: true
   grafana:
+    internal: true
   harness:
+    internal: true
   homepage:
+    internal: true
   memos:
+    internal: true
   step-ca:
+    internal: true
     ipam:
       config:
         - subnet: 172.29.0.0/16
           ip_range: 172.29.5.0/24
   atuin-pg:
+    internal: true
   prometheus:
+    internal: true
   cadvisor:
+    internal: true
   loki:
+    internal: true
     ipam:
       config:
         - subnet: 172.30.0.0/16
           ip_range: 172.30.5.0/24
   traefik:
+    internal: true
   coredns:
+    internal: true
+  dmz:
