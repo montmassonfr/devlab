@@ -4,7 +4,7 @@
 
 - Dev:
     - Harness Open Source:
-        href: https://harness.localhost/
+        href: http://localhost:3000/
         description: Seamless Git integration, fast pipelines, and hosted development environments.
         container: harness
     - Atuin:

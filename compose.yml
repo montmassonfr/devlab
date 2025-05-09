@@ -4,7 +4,7 @@ x-logging: &logging
   logging:
     driver: loki
     options: # note: the ip is the ip we will assign later to loki in this file
-      loki-url: "http://172.30.1.1:3100/loki/api/v1/push"
+      loki-url: "http://172.15.1.1:3100/loki/api/v1/push"
       mode: non-blocking
       max-buffer-size: 4m
       loki-batch-size: 400
@@ -19,31 +19,28 @@ services:
     restart: unless-stopped
     command: -conf /etc/coredns/Corefile
     volumes:
-      - ./coredns:/etc/coredns
+      - ./config/coredns/:/etc/coredns/
     networks:
-      step-ca:
-        ipv4_address: 172.29.1.1
       coredns:
+        ipv4_address: 172.16.1.1
+      # required to resolve dns query to internet domain. e.g. google.com
+      dmz:
   step-ca:
     <<: *logging
     container_name: "step-ca"
     image: smallstep/step-ca
     restart: unless-stopped
-    dns: 172.29.1.1
+    dns: 172.16.1.1
     ports:
       - "9000:9000"
     environment:
-      - "DOCKER_STEPCA_INIT_NAME=Smallstep"
-      # required in order traefik trust to call https://step-ca:9000
-      - "DOCKER_STEPCA_INIT_DNS_NAMES=localhost,step-ca" 
-      - "DOCKER_STEPCA_INIT_REMOTE_MANAGEMENT=true"
-      - "DOCKER_STEPCA_INIT_ACME=true"
-    depends_on:
-      - coredns
+      - "CONFIGPATH=/config/ca.json"
     volumes:
-      - "./step-ca:/home/step"
+      - "./data/step-ca/:/home/step/"
+      - "./config/step-ca/:/config/"
     networks:
       step-ca:
+      coredns:
       dmz:
   traefik:
     <<: *logging
@@ -64,21 +61,25 @@ services:
       - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.myresolver.acme.caserver=https://step-ca:9000/acme/acme/directory"
       - "--certificatesresolvers.myresolver.acme.email=postmaster@example.com"
-      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.myresolver.acme.storage=/data/acme.json"
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - "./letsencrypt:/letsencrypt"
+      - "./data/traefik/:/data/"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       # TIPS: required in order to trust tls with https://step-ca:9000, must bootstrap docker host with step-ca see README.md
       - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
     depends_on:
-      - step-ca
+      step-ca:
+          condition: service_healthy
+      vaultwarden:
+          condition: service_healthy
     networks:
       dmz:
+      coredns:
+        ipv4_address: 172.16.1.2
       step-ca:
-        ipv4_address: 172.29.1.2
       traefik:
       atuin:
       vaultwarden:
@@ -94,9 +95,7 @@ services:
     environment:
       DOMAIN: "https://vaultwarden.localhost"
     volumes:
-      - ./vw-data/:/data/
-    depends_on:
-      - traefik
+      - ./data/vaultwarden/:/data/
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=vaultwarden"
@@ -114,14 +113,24 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - "GITNESS_URL_CONTAINER=https://harness.localhost"
+      - "GITNESS_ENCRYPTER_SECRET"
+      - "GITNESS_PRINCIPAL_ADMIN_EMAIL"
+      - "GITNESS_PRINCIPAL_ADMIN_PASSWORD"
+      - "GITNESS_TRACE=true"
+      - "GITNESS_CI_CONTAINER_NETWORKS=harness-ci"
+      - "GITNESS_URL_CONTAINER=http://harness:3000"
+      - "GITNESS_URL_REGISTRY=https://harness.localhost"
+      - "GITNESS_URL_BASE=https://harness.localhost"
+      - "GITNESS_USER_SIGNUP_ENABLED=false"
+      - "GITNESS_PUBLIC_RESOURCE_CREATION_ENABLED=false"
+      - "GITNESS_METRIC_ENABLED=false"
+      - "GITNESS_CI_PLUGINS_ZIP_URL=/config/plugins-master.zip"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "./harness:/data"
+      - "./data/harness/:/data/"
+      - "./config/harness/:/config/"
       # TIPS: required in order to trust tls from the host. ex. proxy with tls rewrite
       - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
-    depends_on:
-      - traefik
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=harness"
@@ -131,18 +140,18 @@ services:
       - "traefik.http.services.harness.loadbalancer.server.port=3000"
     networks:
       harness:
+      harness-ci:
   homepage:
     <<: *logging
     image: ghcr.io/gethomepage/homepage:latest
     restart: unless-stopped
     container_name: homepage
     volumes:
-      - ./homepage:/app/config # Make sure your local config directory exists
+      - ./config/homepage/:/app/config/ # Make sure your local config directory exists
       - "/var/run/docker.sock:/var/run/docker.sock"
     environment:
       HOMEPAGE_ALLOWED_HOSTS: homepage.localhost # required, may need port. See gethomepage.dev/installation/#homepage_allowed_hosts
-    depends_on:
-      - traefik
+      LOG_TARGETS: stdout
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=homepage"
@@ -153,7 +162,6 @@ services:
     networks:
       homepage:
       prometheus:
-      grafana:
   memos:
     <<: *logging
     image: neosmemo/memos:stable
@@ -169,8 +177,6 @@ services:
       - "traefik.http.routers.memos.entrypoints=websecure"
       - "traefik.http.routers.memos.tls.certresolver=myresolver"
       - "traefik.http.services.memos.loadbalancer.server.port=5230"
-    depends_on:
-      - traefik
     networks:
       memos:
 
@@ -190,7 +196,6 @@ services:
       ATUIN_DB_URI: postgres://$ATUIN_DB_USERNAME:$ATUIN_DB_PASSWORD@db/$ATUIN_DB_NAME
       RUST_LOG: info,atuin_server=debug
     depends_on:
-      - traefik
       - atuin-pg
     labels:
       - "traefik.enable=true"
@@ -238,22 +243,23 @@ services:
     restart: unless-stopped
     image: grafana/loki:latest
     volumes:
-      - ./loki/loki-config.yaml:/etc/loki/local-config.yaml
+      - ./config/loki/loki-config.yaml:/etc/loki/local-config.yaml
       - loki-data:/loki
     command: -config.file=/etc/loki/local-config.yaml
     networks:
       loki:
-        ipv4_address: 172.30.1.1
+        ipv4_address: 172.15.1.1
 
   prometheus:
     container_name: prometheus
     restart: unless-stopped
     image: prom/prometheus:latest
     volumes: 
-      - "./prometheus/config.yml:/etc/prometheus/prometheus.yml"
+      - "./config/prometheus/config.yml:/etc/prometheus/prometheus.yml"
       - prom-data:/prometheus
     depends_on:
-      - cadvisor
+      cadvisor:
+        condition: service_healthy
     networks:
       prometheus:
       cadvisor:
@@ -269,9 +275,9 @@ services:
       - DS_PROMETHEUS=prometheus
     volumes: 
       - "grafana-data:/var/lib/grafana"
-      - "./grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml"
-      - "./grafana/dashboard.json:/var/lib/grafana/dashboards/dashboard.json"
-      - "./grafana/default.yaml:/etc/grafana/provisioning/dashboards/default.yaml"
+      - "./config/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml"
+      - "./config/grafana/dashboard.json:/var/lib/grafana/dashboards/dashboard.json"
+      - "./config/grafana/default.yaml:/etc/grafana/provisioning/dashboards/default.yaml"
     depends_on:
       - traefik
       - prometheus
@@ -284,9 +290,9 @@ services:
       - "traefik.http.routers.grafana.tls.certresolver=myresolver"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
     networks:
+      grafana:
       prometheus:
       loki:
-      grafana:
 volumes:
   grafana-data:
   loki-data:
@@ -307,10 +313,6 @@ networks:
     internal: true
   step-ca:
     internal: true
-    ipam:
-      config:
-        - subnet: 172.29.0.0/16
-          ip_range: 172.29.5.0/24
   atuin-pg:
     internal: true
   prometheus:
@@ -321,10 +323,16 @@ networks:
     internal: true
     ipam:
       config:
-        - subnet: 172.30.0.0/16
-          ip_range: 172.30.5.0/24
+        - subnet: 172.15.0.0/16
+          ip_range: 172.15.5.0/24
   traefik:
     internal: true
   coredns:
     internal: true
+    ipam:
+      config:
+        - subnet: 172.16.0.0/16
+          ip_range: 172.16.5.0/24
   dmz:
+  harness-ci:
+    name: harness-ci
