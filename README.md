@@ -1,24 +1,16 @@
 # Dev lab
 
-This project initiate a devlab with all the tools required to develop on you work station where ever you are.
+This project initiate a devlab with all the tools required to develop on you work stations (Windows, Linux, WSL) where ever you are (work, home).
 
 ## First installation
 
-In order to use your own ca you must start step-ca and configure your workstation to trust it.
-
-## Install loki driver
-
-In order to centralize log in grafana you must install docker loki driver with command:
-
-```bash
-docker plugin install grafana/loki-docker-driver:3.3.2-amd64 --alias loki --grant-all-permissions
-```
+In order to use your services. You must start step-ca and configure your workstation to trust it.
 
 ## Start dev lab
 
 Launch step-ca ony
 ```bash
-docker-compose up step-ca
+docker-compose up coredns step-ca
 ```
 
 retrieve hash of the Root CA
@@ -31,9 +23,9 @@ in my case
 c17042b68c517e9671462ee4a91d937578b8d4af04e0327e200ea83d9d760e7f
 ```
 
-## Configure your CA on your client
+## Configure your CA on your workstation
 
-### Your WSL Distribution
+### Linux/WSL
 
 ```
 wget https://dl.smallstep.com/cli/docs-cli-install/latest/step-cli_amd64.deb
@@ -50,7 +42,7 @@ The authority configuration has been saved in /home/f/.step/config/defaults.json
 Installing the root certificate in the system truststore... done.
 ```
 
-### Your Win workstation
+### Windows
 
 Install step client on windows
 ```
@@ -83,7 +75,7 @@ X.509v3 Root CA Certificate (ECDSA P-256) [Serial: 2385...8800]
           to:  2035-03-22T09:59:10Z
 ```
 
-## test
+## Test
 
 ### in your browser
 Now you can browse https://localhost:9000/health withouth error
@@ -121,3 +113,13 @@ Connection: close
 
 {"status":"ok"}
 ```
+
+## Now you can start the whole stack
+
+```bash
+docker-compose up -d
+```
+
+Then launch the [homepage](https://homepage.localhost/).
+
+Enjoy...

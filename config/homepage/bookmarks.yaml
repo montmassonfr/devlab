@@ -2,12 +2,80 @@
 # For configuration options and examples, please see:
 # https://gethomepage.dev/configs/bookmarks
 
-- Developer:
-    - Github:
-        - abbr: GH
-          href: https://github.com/
-
-- Social:
-    - Reddit:
-        - abbr: RE
-          href: https://reddit.com/
+- Documentation:
+    - Atuin:
+        - abbr: AT
+          href: https://docs.atuin.sh/
+    - cAdvisor:
+        - abbr: CV
+          href: https://github.com/google/cadvisor/
+    - CoreDNS:
+        - abbr: CD
+          href: https://coredns.io/manual/toc/
+    - Grafana:
+        - abbr: GR
+          href: https://grafana.com/docs/grafana/latest/
+    - Harness Open Source:
+        - abbr: HR
+          href: https://developer.harness.io/docs/open-source/
+    - Homepage:
+        - abbr: HM
+          href: https://gethomepage.dev/
+    - Loki:
+        - abbr: LO
+          href: https://grafana.com/docs/loki/latest/
+    - Prometheus:
+        - abbr: PR
+          href: https://prometheus.io/docs/introduction/overview/
+    - Step CA:
+        - abbr: CA
+          href: https://smallstep.com/docs/step-ca/
+    - Traefik:
+        - abbr: TR
+          href: https://doc.traefik.io/traefik/
+    - Vaultwarden: 
+        - abbr: VW
+          href: https://github.com/dani-garcia/vaultwarden/wiki
+- Extensions:
+    - CoreDNS Plugin:
+        - abbr: CP
+          href: https://coredns.io/plugins/
+    - Grafana Dashboard:
+        - abbr: GD
+          href: https://grafana.com/grafana/dashboards/
+    - cAdvisor Storage Plugins:
+        - abbr: CV
+          href: https://github.com/google/cadvisor/blob/master/docs/storage/README.md
+- Integration:
+    - Step CA Protocol & Platform:
+        - abbr: SI
+          href: https://smallstep.com/docs/step-ca/integrations/#protocols-and-platforms
+    - Loki Send data:
+        - abbr: LI
+          href: https://grafana.com/docs/loki/latest/send-data/
+    - Prometheus Exporter: 
+        - abbr: PE
+          href: https://prometheus.io/docs/instrumenting/exporters/
+- Server Configuration:
+    - Atuin Server setup:
+        - abbr: AT
+          href: https://docs.atuin.sh/self-hosting/server-setup/
+    - Harness Open Source Environnement variables:
+        - abbr: HC
+          href: https://github.com/harness/harness/blob/main/types/config.go
+    - Draw.io Environnement variables:
+        - abbr: DC
+          href: https://github.com/jgraph/docker-drawio/blob/dev/main/docker-entrypoint.sh
+    - Step CA Provisionner:
+        - abbr: SP
+          href: https://smallstep.com/docs/step-ca/provisioners/
+    - Traefik Docker Configuration Discovery:
+        - abbr: TD
+          href: https://doc.traefik.io/traefik/providers/docker/
+- Client Configuration:
+    - Atuin Setting up Sync:
+        - abbr: AT
+          href: https://docs.atuin.sh/guide/sync/
+    - Vaultwarden Client Download:
+        - abbr: AT
+          href: https://bitwarden.com/download/

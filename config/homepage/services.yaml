@@ -17,6 +17,10 @@
         container: atuin
 
 - Sec:
+    - CoreDNS:
+        description: A flexible, extensible DNS server, often used in Kubernetes clusters, that uses a plugin-based architecture to provide a wide range of DNS functionalities
+            It resolves DNS request for *.localhost domain to the internal ip of the traefik reverse in the step-ca network in order ACME HTTP-01 challenge succeed.
+        container: coredns
     - Step CA:
         href: https://localhost:9000/health
         description: | 
@@ -32,10 +36,6 @@
         widget:
             type: traefik
             url: http://traefik:8080
-    - CoreDNS:
-        description: A flexible, extensible DNS server, often used in Kubernetes clusters, that uses a plugin-based architecture to provide a wide range of DNS functionalities
-            It resolves DNS request for *.localhost domain to the internal ip of the traefik reverse in the step-ca network in order ACME HTTP-01 challenge succeed.
-        container: coredns
 - Ops:
     - Grafana:
         href: https://grafana.localhost/
