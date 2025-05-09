@@ -77,3 +77,8 @@
         href: https://vaultwarden.localhost/
         description: Vaultwarden is a password manager for securely storing, managing, and sharing sensitive online data such as passwords and passkeys.
         container: vaultwarden
+    - DrawIO:
+        href: https://drawio.localhost/?offline=1
+        description: Draw.io, also known as Diagrams.net, is a free online diagramming tool that allows users to create various types of diagrams, including flowcharts, organizational charts, mind maps, and more.
+        container: drawio
+
