@@ -24,6 +24,9 @@
     - Loki:
         - abbr: LO
           href: https://grafana.com/docs/loki/latest/
+    - MitmProxy:
+        - abbr: MP
+          href: https://docs.mitmproxy.org/stable/
     - Prometheus:
         - abbr: PR
           href: https://prometheus.io/docs/introduction/overview/
@@ -53,6 +56,9 @@
     - Loki Send data:
         - abbr: LI
           href: https://grafana.com/docs/loki/latest/send-data/
+    - MitmProxy Modes:
+        - abbr: MI
+          href: https://docs.mitmproxy.org/stable/concepts/modes/
     - Prometheus Exporter: 
         - abbr: PE
           href: https://prometheus.io/docs/instrumenting/exporters/

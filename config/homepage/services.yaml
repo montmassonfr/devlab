@@ -36,6 +36,12 @@
         widget:
             type: traefik
             url: http://traefik:8080
+    - MitmWeb:
+        href: https://mitmweb.localhost/
+        description: |
+            mitmproxy is an interactive, SSL/TLS-capable intercepting proxy with a console interface for HTTP/1, HTTP/2, and WebSockets.
+            mitmweb is a web-based interface for mitmproxy.
+        container: mitmproxy
 - Ops:
     - Grafana:
         href: https://grafana.localhost/

@@ -4,7 +4,7 @@ x-logging: &logging
   logging:
     driver: loki
     options: # note: the ip is the ip we will assign later to loki in this file
-      loki-url: "http://172.15.1.1:3100/loki/api/v1/push"
+      loki-url: "http://172.31.254.1:3100/loki/api/v1/push"
       mode: non-blocking
       max-buffer-size: 4m
       loki-batch-size: 400
@@ -22,15 +22,18 @@ services:
       - ./config/coredns/:/etc/coredns/
     networks:
       coredns:
-        ipv4_address: 172.16.1.1
+      step-ca:
+        ipv4_address: 172.31.255.1
       # required to resolve dns query to internet domain. e.g. google.com
+      proxified:
+        ipv4_address: 172.31.253.2
       dmz:
   step-ca:
     <<: *logging
     container_name: "step-ca"
     image: smallstep/step-ca
     restart: unless-stopped
-    dns: 172.16.1.1
+    dns: 172.31.255.1
     ports:
       - "9000:9000"
     environment:
@@ -40,8 +43,6 @@ services:
       - "./config/step-ca/:/config/"
     networks:
       step-ca:
-      coredns:
-      dmz:
   traefik:
     <<: *logging
     image: "traefik:v3.3"
@@ -77,9 +78,8 @@ services:
           condition: service_healthy
     networks:
       dmz:
-      coredns:
-        ipv4_address: 172.16.1.2
       step-ca:
+        ipv4_address: 172.31.255.2
       traefik:
       atuin:
       vaultwarden:
@@ -88,6 +88,24 @@ services:
       homepage:
       memos:
       drawio:
+      mitmproxy:   
+  mitmproxy:
+    <<: *logging
+    image: mitmproxy/mitmproxy:12
+    command: mitmweb --mode ${MITM_PROXY_MODE} --web-host 0.0.0.0 --set web_password=${MITM_PASSWORD}
+    container_name: "mitmproxy"
+    networks:
+      dmz:
+      mitmproxy:   
+      proxified:
+        ipv4_address: 172.31.253.3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=mitmproxy"
+      - "traefik.http.routers.mitmproxy.rule=Host(`mitmweb.localhost`)"
+      - "traefik.http.routers.mitmproxy.entrypoints=websecure"
+      - "traefik.http.routers.mitmproxy.tls.certresolver=myresolver"
+      - "traefik.http.services.mitmproxy.loadbalancer.server.port=8081"
   vaultwarden:
     <<: *logging
     image: vaultwarden/server:latest
@@ -118,7 +136,7 @@ services:
       - "GITNESS_PRINCIPAL_ADMIN_EMAIL"
       - "GITNESS_PRINCIPAL_ADMIN_PASSWORD"
       - "GITNESS_TRACE=true"
-      - "GITNESS_CI_CONTAINER_NETWORKS=harness-ci"
+      - "GITNESS_CI_CONTAINER_NETWORKS=harness-container"
       - "GITNESS_URL_CONTAINER=http://harness:3000"
       - "GITNESS_URL_REGISTRY=https://harness.localhost"
       - "GITNESS_URL_BASE=https://harness.localhost"
@@ -141,7 +159,8 @@ services:
       - "traefik.http.services.harness.loadbalancer.server.port=3000"
     networks:
       harness:
-      harness-ci:
+      harness-container:
+      dmz:
   homepage:
     <<: *logging
     image: ghcr.io/gethomepage/homepage:latest
@@ -263,7 +282,7 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
     networks:
       loki:
-        ipv4_address: 172.15.1.1
+        ipv4_address: 172.31.254.1
 
   prometheus:
     container_name: prometheus
@@ -326,11 +345,11 @@ networks:
     internal: true
   memos:
     internal: true
-  step-ca:
-    internal: true
   atuin-pg:
     internal: true
   prometheus:
+    internal: true
+  mitmproxy:   
     internal: true
   cadvisor:
     internal: true
@@ -338,18 +357,29 @@ networks:
     internal: true
     ipam:
       config:
-        - subnet: 172.15.0.0/16
-          ip_range: 172.15.5.0/24
+        - subnet: 172.31.254.0/24
+          ip_range: 172.31.254.128/25
   traefik:
     internal: true
   drawio:
     internal: true
   coredns:
     internal: true
+  step-ca:
+    internal: true
     ipam:
       config:
-        - subnet: 172.16.0.0/16
-          ip_range: 172.16.5.0/24
+        - subnet: 172.31.255.0/24
+          ip_range: 172.31.255.128/25
   dmz:
-  harness-ci:
-    name: harness-ci
+  harness-container:
+    name: harness-container
+    internal: true
+  proxified:
+    name: proxified
+    internal: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.253.0/24
+          ip_range: 172.31.253.128/25
