@@ -94,6 +94,7 @@ services:
     image: mitmproxy/mitmproxy:12
     command: mitmweb --mode ${MITM_PROXY_MODE} --web-host 0.0.0.0 --set web_password=${MITM_PASSWORD}
     container_name: "mitmproxy"
+    restart: unless-stopped
     networks:
       dmz:
       mitmproxy:   

@@ -7,5 +7,5 @@ $ORIGIN localhost.
         86400   ; Minimum TTL
     )
     IN  NS  ns.localhost.
-ns  IN  A   172.16.1.1
-*   IN  A   172.16.1.2
+ns  IN  A   172.31.255.1
+*   IN  A   172.31.255.2
