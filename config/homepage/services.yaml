@@ -17,6 +17,11 @@
         container: atuin
 
 - Sec:
+    - Keycloak:
+        href: https://keycloak.localhost
+        description: | 
+            Keycloak is an open-source Identity and Access Management (IAM) tool that provides a centralized platform for managing user authentication and authorization across various applications and services.
+        container: keycloak
     - CoreDNS:
         description: A flexible, extensible DNS server, often used in Kubernetes clusters, that uses a plugin-based architecture to provide a wide range of DNS functionalities
             It resolves DNS request for *.localhost domain to the internal ip of the traefik reverse in the step-ca network in order ACME HTTP-01 challenge succeed.

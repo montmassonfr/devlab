@@ -123,3 +123,52 @@ docker-compose up -d
 Then launch the [homepage](https://homepage.localhost/).
 
 Enjoy...
+
+## Keycloak
+
+### Export configuration
+
+Export configuration in the container
+```bash
+docker compose exec keycloak sh -c \
+  "cp -rp /opt/keycloak/data/h2 /tmp ; \
+  /opt/keycloak/bin/kc.sh export --dir /opt/keycloak/data/import --realm my-realm \
+    --db dev-file \
+    --db-url 'jdbc:h2:file:/tmp/h2/keycloakdb;NON_KEYWORDS=VALUE'"
+```
+
+Update data from container
+```bash
+docker compose exec keycloak cat /opt/keycloak/data/import/my-realm-users-0.json > data/keycloak/my-realm-users-0.json
+```
+
+Update config from container
+```bash
+docker compose exec keycloak cat /opt/keycloak/data/import/my-realm-realm.json > config/keycloak/my-realm-realm.json
+```
+
+### Configure SSO in Memos
+
+https://www.usememos.com/docs/advanced-settings/keycloak
+
+The keycloak configuration is the already done.
+
+You need to configure manually memos with:
+* Authorization endpoint: https://keycloak.localhost/realms/my-realm/protocol/openid-connect/auth
+* Token endpoint: http://keycloak:8080/realms/my-realm/protocol/openid-connect/token
+* User endpoint: http://keycloak:8080/realms/my-realm/protocol/openid-connect/userinfo
+
+You can test token generation because directAccessGrants has been enabled in keycloak. Enter valid user name password:
+
+```rest
+# @name login
+POST https://localhost/realms/my-realm/protocol/openid-connect/token
+Host: keycloak.localhost
+Content-Type: application/x-www-form-urlencoded
+
+&grant_type=password
+&client_id=memos
+&client_secret={{$dotenv %MEMOS_CLIENT_SECRET}}
+&username=your_user
+&password=your_password
+```
