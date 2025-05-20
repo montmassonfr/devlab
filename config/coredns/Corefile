@@ -1,7 +1,7 @@
 . {
     errors
     cancel
-    prometheus coredns:9153
+    prometheus 0.0.0.0:9153
     log
     health
 
