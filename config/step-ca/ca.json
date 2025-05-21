@@ -19,6 +19,9 @@
 	},
 	"authority": {
 		"enableAdmin": true,
+		"claims": {
+			"maxTLSCertDuration": "8760h1m0s"
+		},
 		"policy": {
 			"x509": {
 				"allow": {

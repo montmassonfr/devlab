@@ -39,6 +39,9 @@
     - Vaultwarden: 
         - abbr: VW
           href: https://github.com/dani-garcia/vaultwarden/wiki
+    - Kanidm:
+        - abbr: KD
+          href: https://kanidm.github.io/kanidm/stable/
 - Extensions:
     - CoreDNS Plugin:
         - abbr: CP
@@ -62,6 +65,9 @@
     - Prometheus Exporter: 
         - abbr: PE
           href: https://prometheus.io/docs/instrumenting/exporters/
+    - Kanidm:
+        - abbr: KI
+          href: https://kanidm.github.io/kanidm/stable/integrations/index.html
 - Server Configuration:
     - Atuin Server setup:
         - abbr: AT
@@ -78,6 +84,9 @@
     - Traefik Docker Configuration Discovery:
         - abbr: TD
           href: https://doc.traefik.io/traefik/providers/docker/
+    - Kanidm:
+        - abbr: KC
+          href: https://kanidm.github.io/kanidm/stable/server_configuration.html
 - Client Configuration:
     - Atuin Setting up Sync:
         - abbr: AT

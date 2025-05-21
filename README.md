@@ -124,51 +124,49 @@ Then launch the [homepage](https://homepage.localhost/).
 
 Enjoy...
 
-## Keycloak
 
-### Export configuration
+### Kanidm
 
-Export configuration in the container
+Produce tls certificate for Kanidm server self signed for 1 year. Required additionnal configuration in step-ca in order to allow it
+
 ```bash
-docker compose exec keycloak sh -c \
-  "cp -rp /opt/keycloak/data/h2 /tmp ; \
-  /opt/keycloak/bin/kc.sh export --dir /opt/keycloak/data/import --realm my-realm \
-    --db dev-file \
-    --db-url 'jdbc:h2:file:/tmp/h2/keycloakdb;NON_KEYWORDS=VALUE'"
+step certificate create kanidm chain.pem key.pem --profile self-signed --subtle --no-password --insecure --not-after=8760h
 ```
 
-Update data from container
+login
 ```bash
-docker compose exec keycloak cat /opt/keycloak/data/import/my-realm-users-0.json > data/keycloak/my-realm-users-0.json
+docker compose exec -i -t kanidm   kanidmd recover-account idm_admin
+kanidm login --name idm_admin
 ```
 
-Update config from container
+Configure one user:
 ```bash
-docker compose exec keycloak cat /opt/keycloak/data/import/my-realm-realm.json > config/keycloak/my-realm-realm.json
+kanidm person create f f
+kanidm person credential create-reset-token f
 ```
 
-### Configure SSO in Memos
+#### configure SSO for Memos
 
-https://www.usememos.com/docs/advanced-settings/keycloak
-
-The keycloak configuration is the already done.
-
-You need to configure manually memos with:
-* Authorization endpoint: https://keycloak.localhost/realms/my-realm/protocol/openid-connect/auth
-* Token endpoint: http://keycloak:8080/realms/my-realm/protocol/openid-connect/token
-* User endpoint: http://keycloak:8080/realms/my-realm/protocol/openid-connect/userinfo
-
-You can test token generation because directAccessGrants has been enabled in keycloak. Enter valid user name password:
-
-```rest
-# @name login
-POST https://localhost/realms/my-realm/protocol/openid-connect/token
-Host: keycloak.localhost
-Content-Type: application/x-www-form-urlencoded
-
-&grant_type=password
-&client_id=memos
-&client_secret={{$dotenv %MEMOS_CLIENT_SECRET}}
-&username=your_user
-&password=your_password
+create group for Memos users and add user as member
+```bash
+kanidm group create memos_users
+kanidm group add-members memos_users f
+kanidm group list-members memos_users
 ```
+
+configure oauth client
+```bash
+kanidm system oauth2 create memos memos https://memos.localhost
+kanidm system oauth2 add-redirect-url memos https://memos.localhost/auth/callback
+kanidm system oauth2 update-scope-map memos memos_users email profile openid
+kanidm system oauth2 warning-insecure-client-disable-pkce memos
+```
+
+Configure in memos admin:
+* Client ID*: memos
+* Client secret*: `kanidm system oauth2 show-basic-secret memos`
+* Authorization endpoint*: https://kanidm.localhost/ui/oauth2
+* Token endpoint*: https://kanidm:8443/oauth2/token
+* User endpoint*: https://kanidm:8443/oauth2/openid/memos/userinfo
+* Scopes*: openid profile email
+* Identifier*: preferred_username

@@ -43,6 +43,7 @@ services:
       - "./config/step-ca/:/config/"
     networks:
       step-ca:
+      dmz:
   traefik:
     <<: *logging
     image: "traefik:v3.3"
@@ -63,6 +64,7 @@ services:
       - "--certificatesresolvers.myresolver.acme.caserver=https://step-ca:9000/acme/acme/directory"
       - "--certificatesresolvers.myresolver.acme.email=postmaster@example.com"
       - "--certificatesresolvers.myresolver.acme.storage=/data/acme.json"
+      - "--serverstransport.insecureskipverify=true"
     ports:
       - "80:80"
       - "443:443"
@@ -76,7 +78,7 @@ services:
           condition: service_healthy
       vaultwarden:
           condition: service_healthy
-      keycloak:
+      kanidm:
           condition: service_healthy
     networks:
       dmz:
@@ -91,7 +93,7 @@ services:
       memos:
       drawio:
       mitmproxy: 
-      keycloak: 
+      kanidm:
   mitmproxy:
     <<: *logging
     image: mitmproxy/mitmproxy:12
@@ -110,48 +112,25 @@ services:
       - "traefik.http.routers.mitmproxy.entrypoints=websecure"
       - "traefik.http.routers.mitmproxy.tls.certresolver=myresolver"
       - "traefik.http.services.mitmproxy.loadbalancer.server.port=8081"
-  keycloak:
+  kanidm:
     <<: *logging
-    image: quay.io/keycloak/keycloak:26.2
-    container_name: keycloak
+    image: kanidm/server:latest
+    container_name: kanidm
     restart: unless-stopped
-    environment:
-      KC_HOSTNAME: keycloak.localhost
-      KC_FRONTEND_URL: https://keycloak.localhost
-      KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      KC_HEALTH_ENABLED: "true"
-      KC_HTTP_ENABLED: 'true'
-      KC_PROXY_HEADERS: 'xforwarded'
-      PROXY_ADDRESS_FORWARDING: 'true'
-      KC_LOG_LEVEL: info
-      MEMOS_CLIENT_SECRET: ${MEMOS_CLIENT_SECRET}
-    command: ["start-dev","--import-realm"]
     volumes:
-      - "./config/keycloak/my-realm-realm.json:/opt/keycloak/data/import/my-realm-realm.json"
-      - "./data/keycloak/my-realm-users-0.json:/opt/keycloak/data/import/my-realm-users-0.json"
-    healthcheck:
-      test: 
-      - "CMD-SHELL"
-      - |
-        exec 3<>/dev/tcp/localhost/9000 &&
-        echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
-        cat <&3 | tee /tmp/healthcheck.log | grep -q '200 OK'
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 90s
+      - ./config/kanidm/:/data/
+      - ./data/kanidm/:/storage/
     networks:
-      keycloak:
+      kanidm:
       memos:
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=traefik"
-      - "traefik.http.routers.keycloak.rule=Host(`keycloak.localhost`)"
-      - "traefik.http.routers.keycloak.entrypoints=websecure"
-      - "traefik.http.routers.keycloak.tls.certresolver=myresolver"
-      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
-      - "traefik.http.services.keycloak.loadbalancer.passhostheader=true"
+      - "traefik.docker.network=kanidm"
+      - traefik.http.routers.kanidm.rule=Host(`kanidm.localhost`)
+      - traefik.http.routers.kanidm.entrypoints=websecure
+      - "traefik.http.routers.kanidm.tls.certresolver=myresolver"
+      - traefik.http.services.kanidm.loadbalancer.server.port=8443
+      - traefik.http.services.kanidm.loadbalancer.server.scheme=https
   vaultwarden:
     <<: *logging
     image: vaultwarden/server:latest
@@ -236,6 +215,7 @@ services:
     user: "${UID}:${GID}"
     volumes:
       - ./data/memos/:/var/opt/memos:Z
+      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=memos"
@@ -421,8 +401,8 @@ networks:
   harness-container:
     name: harness-container
     internal: true
-  keycloak:
-    internal: true  
+  kanidm:
+    internal: true
   proxified:
     name: proxified
     internal: true
