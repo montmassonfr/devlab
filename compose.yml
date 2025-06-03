@@ -22,12 +22,10 @@ services:
       - ./config/coredns/:/etc/coredns/
     networks:
       coredns:
-      step-ca:
+      intranet:
         ipv4_address: 172.31.255.1
       # required to resolve dns query to internet domain. e.g. google.com
-      proxified:
-        ipv4_address: 172.31.253.2
-      dmz:
+      external:
   step-ca:
     <<: *logging
     container_name: "step-ca"
@@ -42,8 +40,8 @@ services:
       - "./data/step-ca/:/home/step/"
       - "./config/step-ca/:/config/"
     networks:
-      step-ca:
-      dmz:
+      intranet:
+      external:
   traefik:
     <<: *logging
     image: "traefik:v3.3"
@@ -81,19 +79,19 @@ services:
       kanidm:
           condition: service_healthy
     networks:
-      dmz:
-      step-ca:
+      external:
+      intranet:
         ipv4_address: 172.31.255.2
       traefik:
       atuin:
       vaultwarden:
       grafana:
-      harness:
       homepage:
       memos:
       drawio:
       mitmproxy: 
       kanidm:
+      code-server:
   mitmproxy:
     <<: *logging
     image: mitmproxy/mitmproxy:12
@@ -101,7 +99,7 @@ services:
     container_name: "mitmproxy"
     restart: unless-stopped
     networks:
-      dmz:
+      external:
       mitmproxy:   
       proxified:
         ipv4_address: 172.31.253.3
@@ -149,43 +147,40 @@ services:
       - "traefik.http.services.vaultwarden.loadbalancer.server.port=80"
     networks:
       vaultwarden:
-  harness:
+  code-server:
     <<: *logging
-    image: harness/harness
-    container_name: harness
+    image: codercom/code-server
+    container_name: code-server
+    dns: 172.31.255.1
     restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      - "GITNESS_ENCRYPTER_SECRET"
-      - "GITNESS_PRINCIPAL_ADMIN_EMAIL"
-      - "GITNESS_PRINCIPAL_ADMIN_PASSWORD"
-      - "GITNESS_TRACE=true"
-      - "GITNESS_CI_CONTAINER_NETWORKS=harness-container"
-      - "GITNESS_URL_CONTAINER=http://harness:3000"
-      - "GITNESS_URL_REGISTRY=https://harness.localhost"
-      - "GITNESS_URL_BASE=https://harness.localhost"
-      - "GITNESS_USER_SIGNUP_ENABLED=false"
-      - "GITNESS_PUBLIC_RESOURCE_CREATION_ENABLED=false"
-      - "GITNESS_METRIC_ENABLED=false"
-      - "GITNESS_CI_PLUGINS_ZIP_URL=/config/plugins-master.zip"
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock"
-      - "./data/harness/:/data/"
-      - "./config/harness/:/config/"
-      # TIPS: required in order to trust tls from the host. ex. proxy with tls rewrite
+      - "$HOME/.local:/home/coder/.local"
+      - "$HOME/.config:/home/coder/.config"
+      - "$HOME/project:/home/coder/project" 
       - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
+    user: "1000:1000"
+    environment:
+      - "DOCKER_USER=$USER"
+      - NODE_OPTIONS=--max_old_space_size=4096 code-server
+      - VSCODE_PROXY_URI=https://{{port}}.code-server.localhost
+      # - http_proxy=http://172.31.253.3:8080
+      # - https_proxy=http://172.31.253.3:8080
+      # - no_proxy=localhost,172.31.253.0/24,172.31.254.0/24,172.31.255.0/24
+      # - HTTP_PROXY=http://172.31.253.3:8080
+      # - HTTPS_PROXY=http://172.31.253.3:8080
+      # - NO_PROXY=localhost,172.17.0.0/16,172.31.253.0/24,172.31.254.0/24,172.31.255.0/24
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=harness"
-      - "traefik.http.routers.harness.rule=Host(`harness.localhost`)"
-      - "traefik.http.routers.harness.entrypoints=websecure"
-      - "traefik.http.routers.harness.tls.certresolver=myresolver"
-      - "traefik.http.services.harness.loadbalancer.server.port=3000"
+      - "traefik.docker.network=code-server"
+      - "traefik.http.routers.code-server.rule=Host(`code-server.localhost`)"
+      #  || HostRegexp(`{subdomain:[0-9]+}.code-server.localhost`)
+      - "traefik.http.routers.code-server.entrypoints=websecure"
+      - "traefik.http.routers.code-server.tls.certresolver=myresolver"
+      - "traefik.http.services.code-server.loadbalancer.server.port=8080"
     networks:
-      harness:
-      harness-container:
-      dmz:
+      code-server:
+      intranet:
+      proxified:
   homepage:
     <<: *logging
     image: ghcr.io/gethomepage/homepage:latest
@@ -233,7 +228,7 @@ services:
     container_name: atuin
     command: server start
     volumes:
-      - "./atuin/config:/config"
+      - "./config/atuin/:/config/"
     links:
       - atuin-pg:db
     environment:
@@ -260,7 +255,7 @@ services:
     container_name: atuin-pg
     restart: unless-stopped
     volumes: # Don't remove permanent storage for index database files!
-      - "./atuin/database:/var/lib/postgresql/data/"
+      - "./data/atuin-pg/:/var/lib/postgresql/data/"
     environment:
       POSTGRES_USER: ${ATUIN_DB_USERNAME}
       POSTGRES_PASSWORD: ${ATUIN_DB_PASSWORD}
@@ -363,9 +358,9 @@ networks:
     internal: true
   vaultwarden:
     internal: true
-  grafana:
+  code-server:
     internal: true
-  harness:
+  grafana:
     internal: true
   homepage:
     internal: true
@@ -391,16 +386,13 @@ networks:
     internal: true
   coredns:
     internal: true
-  step-ca:
+  intranet:
     internal: true
     ipam:
       config:
         - subnet: 172.31.255.0/24
           ip_range: 172.31.255.128/25
-  dmz:
-  harness-container:
-    name: harness-container
-    internal: true
+  external:
   kanidm:
     internal: true
   proxified:

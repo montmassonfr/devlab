@@ -15,9 +15,6 @@
     - Grafana:
         - abbr: GR
           href: https://grafana.com/docs/grafana/latest/
-    - Harness Open Source:
-        - abbr: HR
-          href: https://developer.harness.io/docs/open-source/
     - Homepage:
         - abbr: HM
           href: https://gethomepage.dev/
@@ -72,9 +69,6 @@
     - Atuin Server setup:
         - abbr: AT
           href: https://docs.atuin.sh/self-hosting/server-setup/
-    - Harness Open Source Environnement variables:
-        - abbr: HC
-          href: https://github.com/harness/harness/blob/main/types/config.go
     - Draw.io Environnement variables:
         - abbr: DC
           href: https://github.com/jgraph/docker-drawio/blob/dev/main/docker-entrypoint.sh
