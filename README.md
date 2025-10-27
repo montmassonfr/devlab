@@ -83,7 +83,7 @@ Now you can browse https://localhost:9000/health withouth error
 
 ### with humao.rest-client
 ```http
-GET https://localhost:9000/health
+GET https://step-ca:9000/health
 ```
 
 which return
@@ -120,7 +120,7 @@ Connection: close
 docker-compose up -d
 ```
 
-Then launch the [homepage](https://homepage.localhost/).
+Then launch the [homepage](https://homepage.lb.localhost/).
 
 Enjoy...
 
@@ -135,7 +135,7 @@ step certificate create kanidm chain.pem key.pem --profile self-signed --subtle 
 
 login
 ```bash
-docker compose exec -i -t kanidm   kanidmd recover-account idm_admin
+docker compose exec -i -t kanidm kanidmd recover-account idm_admin
 kanidm login --name idm_admin
 ```
 
@@ -156,8 +156,8 @@ kanidm group list-members memos_users
 
 configure oauth client
 ```bash
-kanidm system oauth2 create memos memos https://memos.localhost
-kanidm system oauth2 add-redirect-url memos https://memos.localhost/auth/callback
+kanidm system oauth2 create memos memos https://memos.lb.localhost
+kanidm system oauth2 add-redirect-url memos https://memos.lb.localhost/auth/callback
 kanidm system oauth2 update-scope-map memos memos_users email profile openid
 kanidm system oauth2 warning-insecure-client-disable-pkce memos
 ```
@@ -165,7 +165,7 @@ kanidm system oauth2 warning-insecure-client-disable-pkce memos
 Configure in memos admin:
 * Client ID*: memos
 * Client secret*: `kanidm system oauth2 show-basic-secret memos`
-* Authorization endpoint*: https://kanidm.localhost/ui/oauth2
+* Authorization endpoint*: https://kanidm.lb.localhost/ui/oauth2
 * Token endpoint*: https://kanidm:8443/oauth2/token
 * User endpoint*: https://kanidm:8443/oauth2/openid/memos/userinfo
 * Scopes*: openid profile email

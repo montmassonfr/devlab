@@ -71,12 +71,18 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       # TIPS: required in order to trust tls with https://step-ca:9000, must bootstrap docker host with step-ca see README.md
       - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.lb.localhost`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.tls=true"
+      - "traefik.http.routers.traefik.tls.certresolver=myresolver"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
     depends_on:
       step-ca:
           condition: service_healthy
       vaultwarden:
-          condition: service_healthy
-      kanidm:
           condition: service_healthy
     networks:
       external:
@@ -91,7 +97,6 @@ services:
       drawio:
       mitmproxy: 
       kanidm:
-      code-server:
   mitmproxy:
     <<: *logging
     image: mitmproxy/mitmproxy:12
@@ -106,7 +111,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=mitmproxy"
-      - "traefik.http.routers.mitmproxy.rule=Host(`mitmweb.localhost`)"
+      - "traefik.http.routers.mitmproxy.rule=Host(`mitmweb.lb.localhost`)"
       - "traefik.http.routers.mitmproxy.entrypoints=websecure"
       - "traefik.http.routers.mitmproxy.tls.certresolver=myresolver"
       - "traefik.http.services.mitmproxy.loadbalancer.server.port=8081"
@@ -124,7 +129,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=kanidm"
-      - traefik.http.routers.kanidm.rule=Host(`kanidm.localhost`)
+      - traefik.http.routers.kanidm.rule=Host(`kanidm.lb.localhost`)
       - traefik.http.routers.kanidm.entrypoints=websecure
       - "traefik.http.routers.kanidm.tls.certresolver=myresolver"
       - traefik.http.services.kanidm.loadbalancer.server.port=8443
@@ -135,13 +140,13 @@ services:
     container_name: vaultwarden
     restart: unless-stopped
     environment:
-      DOMAIN: "https://vaultwarden.localhost"
+      DOMAIN: "https://vaultwarden.lb.localhost"
     volumes:
       - ./data/vaultwarden/:/data/
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=vaultwarden"
-      - "traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.localhost`)"
+      - "traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.lb.localhost`)"
       - "traefik.http.routers.vaultwarden.entrypoints=websecure"
       - "traefik.http.routers.vaultwarden.tls.certresolver=myresolver"
       - "traefik.http.services.vaultwarden.loadbalancer.server.port=80"
@@ -162,7 +167,7 @@ services:
     environment:
       - "DOCKER_USER=$USER"
       - NODE_OPTIONS=--max_old_space_size=4096 code-server
-      - VSCODE_PROXY_URI=https://{{port}}.code-server.localhost
+      - VSCODE_PROXY_URI=https://{{port}}.code-server.lb.localhost
       # - http_proxy=http://172.31.253.3:8080
       # - https_proxy=http://172.31.253.3:8080
       # - no_proxy=localhost,172.31.253.0/24,172.31.254.0/24,172.31.255.0/24
@@ -171,14 +176,13 @@ services:
       # - NO_PROXY=localhost,172.17.0.0/16,172.31.253.0/24,172.31.254.0/24,172.31.255.0/24
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=code-server"
-      - "traefik.http.routers.code-server.rule=Host(`code-server.localhost`)"
-      #  || HostRegexp(`{subdomain:[0-9]+}.code-server.localhost`)
+      - "traefik.docker.network=intranet"
+      - "traefik.http.routers.code-server.rule=Host(`code-server.lb.localhost`)"
+      #  || HostRegexp(`{subdomain:[0-9]+}.code-server.lb.localhost`)
       - "traefik.http.routers.code-server.entrypoints=websecure"
       - "traefik.http.routers.code-server.tls.certresolver=myresolver"
       - "traefik.http.services.code-server.loadbalancer.server.port=8080"
     networks:
-      code-server:
       intranet:
       proxified:
   homepage:
@@ -190,12 +194,12 @@ services:
       - ./config/homepage/:/app/config/ # Make sure your local config directory exists
       - "/var/run/docker.sock:/var/run/docker.sock"
     environment:
-      HOMEPAGE_ALLOWED_HOSTS: homepage.localhost # required, may need port. See gethomepage.dev/installation/#homepage_allowed_hosts
+      HOMEPAGE_ALLOWED_HOSTS: homepage.lb.localhost # required, may need port. See gethomepage.dev/installation/#homepage_allowed_hosts
       LOG_TARGETS: stdout
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=homepage"
-      - "traefik.http.routers.homepage.rule=Host(`homepage.localhost`)"
+      - "traefik.http.routers.homepage.rule=Host(`homepage.lb.localhost`)"
       - "traefik.http.routers.homepage.entrypoints=websecure"
       - "traefik.http.routers.homepage.tls.certresolver=myresolver"
       - "traefik.http.services.homepage.loadbalancer.server.port=3000"
@@ -214,7 +218,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=memos"
-      - "traefik.http.routers.memos.rule=Host(`memos.localhost`)"
+      - "traefik.http.routers.memos.rule=Host(`memos.lb.localhost`)"
       - "traefik.http.routers.memos.entrypoints=websecure"
       - "traefik.http.routers.memos.tls.certresolver=myresolver"
       - "traefik.http.services.memos.loadbalancer.server.port=5230"
@@ -241,7 +245,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=atuin"
-      - "traefik.http.routers.atuin.rule=Host(`atuin.localhost`)"
+      - "traefik.http.routers.atuin.rule=Host(`atuin.lb.localhost`)"
       - "traefik.http.routers.atuin.entrypoints=websecure"
       - "traefik.http.routers.atuin.tls.certresolver=myresolver"
       - "traefik.http.services.atuin.loadbalancer.server.port=8888"
@@ -270,7 +274,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=drawio"
-      - "traefik.http.routers.drawio.rule=Host(`drawio.localhost`)"
+      - "traefik.http.routers.drawio.rule=Host(`drawio.lb.localhost`)"
       - "traefik.http.routers.drawio.entrypoints=websecure"
       - "traefik.http.routers.drawio.tls.certresolver=myresolver"
       - "traefik.http.services.drawio.loadbalancer.server.port=8080"
@@ -340,7 +344,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=grafana"
-      - "traefik.http.routers.grafana.rule=Host(`grafana.localhost`)"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.lb.localhost`)"
       - "traefik.http.routers.grafana.entrypoints=websecure"
       - "traefik.http.routers.grafana.tls.certresolver=myresolver"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
@@ -357,8 +361,6 @@ networks:
   atuin:
     internal: true
   vaultwarden:
-    internal: true
-  code-server:
     internal: true
   grafana:
     internal: true

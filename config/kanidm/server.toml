@@ -66,7 +66,7 @@ tls_key = "/storage/key.pem"
 #   webauthn, oauth tokens, and more.
 #   If you change this value you *must* run
 #   `kanidmd domain rename` immediately after.
-domain = "kanidm.localhost"
+domain = "kanidm.lb.localhost"
 #
 #   The origin for webauthn. This is the url to the server,
 #   with the port included if it is non-standard (any port
@@ -74,7 +74,7 @@ domain = "kanidm.localhost"
 #   domain name you configure above. If these two items are
 #   not consistent, the server WILL refuse to start!
 #   origin = "https://idm.example.com"
-origin = "https://kanidm.localhost"
+origin = "https://kanidm.lb.localhost"
 
 #   HTTPS requests can be reverse proxied by a loadbalancer.
 #   To preserve the original IP of the caller, these systems

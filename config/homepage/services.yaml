@@ -4,7 +4,7 @@
 
 - Dev:
     - Code Server:
-        href: https://code-server.localhost/
+        href: https://code-server.lb.localhost/
         description: Code-server's primary purpose is to enable you to run Visual Studio Code (VS Code) in the browser, creating a web-based IDE that can be accessed from any device with an internet connection. 
         container: code-server
     - Atuin:
@@ -13,18 +13,18 @@
             Sync, search and backup shell history with Atuin.
             In order use a self hosted server with Atuin, you’ll have to set up the sync_address in the config file at ~/.config/atuin/config.toml. 
             See the config page for more details on how to set the sync_address. 
-            You can set the environment variable ATUIN_SYNC_ADDRESS to the correct host ie.: ATUIN_SYNC_ADDRESS=https://atuin.localhost
+            You can set the environment variable ATUIN_SYNC_ADDRESS to the correct host ie.: ATUIN_SYNC_ADDRESS=https://atuin.lb.localhost
         container: atuin
 
 - Sec:
     - Kanidm:
-        href: https://kanidm.localhost
+        href: https://kanidm.lb.localhost
         description: | 
             Kanidm is a simple and secure identity management platform, allowing other applications and services to offload the challenge of authenticating and storing identities to Kanidm.
         container: kanidm
     - CoreDNS:
         description: A flexible, extensible DNS server, often used in Kubernetes clusters, that uses a plugin-based architecture to provide a wide range of DNS functionalities
-            It resolves DNS request for *.localhost domain to the internal ip of the traefik reverse in the step-ca network in order ACME HTTP-01 challenge succeed.
+            It resolves DNS request for *.lb.localhost domain to the internal ip of the traefik reverse in the step-ca network in order ACME HTTP-01 challenge succeed.
         container: coredns
     - Step CA:
         href: https://localhost:9000/health
@@ -33,23 +33,24 @@
             It signs tls certificates for HTTP services with the ACME HTTP-01 challenge.
         container: step-ca
     - Traefik:
+        href: https://traefik.lb.localhost
         description: |
             Traefik is a modern, cloud-native reverse proxy and load balancer that simplifies deploying multi-service applications. 
             It automatically discovers and routes traffic to backend services, eliminating the need for manual configuration. 
-            It serves secure web services signed by step-ca Certificate authority at *.localhost.  
+            It serves secure web services signed by step-ca Certificate authority at *.lb.localhost.  
         container: traefik
         widget:
             type: traefik
             url: http://traefik:8080
     - MitmWeb:
-        href: https://mitmweb.localhost/
+        href: https://mitmweb.lb.localhost/
         description: |
             mitmproxy is an interactive, SSL/TLS-capable intercepting proxy with a console interface for HTTP/1, HTTP/2, and WebSockets.
             mitmweb is a web-based interface for mitmproxy.
         container: mitmproxy
 - Ops:
     - Grafana:
-        href: https://grafana.localhost/
+        href: https://grafana.lb.localhost/
         description: | 
             Web-based platform used for visualizing and monitoring data. 
             It allows users to query, visualize, and analyze time-series data from various sources, including metrics, logs, and traces.
@@ -81,15 +82,15 @@
 
 - Services:
     - Memos:
-        href: https://memos.localhost/
+        href: https://memos.lb.localhost/
         description: Effortlessly craft your impactful content.
         container: memos
     - Vaultwarden:
-        href: https://vaultwarden.localhost/
+        href: https://vaultwarden.lb.localhost/
         description: Vaultwarden is a password manager for securely storing, managing, and sharing sensitive online data such as passwords and passkeys.
         container: vaultwarden
     - DrawIO:
-        href: https://drawio.localhost/?offline=1
+        href: https://drawio.lb.localhost/?offline=1
         description: Draw.io, also known as Diagrams.net, is a free online diagramming tool that allows users to create various types of diagrams, including flowcharts, organizational charts, mind maps, and more.
         container: drawio
 
