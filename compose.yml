@@ -44,7 +44,7 @@ services:
       external:
   traefik:
     <<: *logging
-    image: "traefik:v3.3"
+    image: "traefik:v3"
     container_name: "traefik"
     restart: unless-stopped
     command:
@@ -97,6 +97,35 @@ services:
       drawio:
       mitmproxy: 
       kanidm:
+      headscale:
+  headscale:
+    <<: *logging
+    image: headscale/headscale:0.27.1
+    restart: unless-stopped
+    container_name: headscale
+    volumes:
+      # Please set <HEADSCALE_PATH> to the absolute path
+      # of the previously created headscale directory.
+      - ./config/headscale:/etc/headscale
+      - ./data/headscale/lib:/var/lib/headscale
+      - ./data/headscale/run:/var/run/headscale
+      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
+    ports:
+      - "3478:3478/udp"
+    command: serve
+    healthcheck:
+        test: ["CMD", "headscale", "health"]
+    networks:
+      external:
+      headscale:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=headscale"
+      - "traefik.http.routers.headscale.rule=Host(`headscale.lb.localhost`)"
+      - "traefik.http.routers.headscale.entrypoints=websecure"
+      - "traefik.http.routers.headscale.tls.certresolver=myresolver"
+      - "traefik.http.services.headscale.loadbalancer.server.port=8080"
+
   mitmproxy:
     <<: *logging
     image: mitmproxy/mitmproxy:12
@@ -396,6 +425,8 @@ networks:
           ip_range: 172.31.255.128/25
   external:
   kanidm:
+    internal: true
+  headscale:
     internal: true
   proxified:
     name: proxified
