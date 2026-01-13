@@ -125,6 +125,22 @@ services:
       - "traefik.http.routers.headscale.entrypoints=websecure"
       - "traefik.http.routers.headscale.tls.certresolver=myresolver"
       - "traefik.http.services.headscale.loadbalancer.server.port=8080"
+  tailscaled:
+    image: tailscale/tailscale
+    container_name: tailscaled
+    network_mode: host
+    volumes:
+      - ./data/tailscaled:/var/lib/tailscale  # Dedicated host dir
+      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - TS_HOSTNAME=tailscaled
+      - TS_EXTRA_ARGS=--advertise-tags=tag:proxy --accept-dns=true
+      - TS_NO_LOGS_NO_SUPPORT=true
+      - TS_USERSPACE=true
+      - TS_LOGIN_SERVER=https://headscale.lb.localhost
+    restart: unless-stopped
 
   mitmproxy:
     <<: *logging
