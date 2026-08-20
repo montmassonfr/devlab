@@ -10,6 +10,23 @@ x-logging: &logging
       loki-batch-size: 400
       loki-retries: "3"
 
+x-ts-base: &ts-base
+  image: tailscale/tailscale
+  cap_add:
+    - net_admin
+    - sys_module
+  depends_on:
+    - headscale
+  devices:
+    - /dev/net/tun:/dev/net/tun
+  environment:
+    TS_USERSPACE: false
+    TS_NO_LOGS_NO_SUPPORT: "true"
+    TS_AUTHKEY: ${SERVICE_PREAUTH_KEY}
+    TS_STATE_DIR: /var/lib/tailscale
+    TS_EXTRA_ARGS: ${TS_EXTRA_ARGS}
+  extra_hosts:
+    - "${FQDN}:host-gateway"
 services:
   # inspired from https://theorangeone.net/posts/expose-docker-internal-dns/
   coredns:
@@ -25,7 +42,6 @@ services:
       intranet:
         ipv4_address: 172.31.255.1
       # required to resolve dns query to internet domain. e.g. google.com
-      external:
   step-ca:
     <<: *logging
     container_name: "step-ca"
@@ -41,7 +57,33 @@ services:
       - "./config/step-ca/:/config/"
     networks:
       intranet:
-      external:
+  ts-traefik:
+    <<: *ts-base
+    dns: 100.100.100.100
+    environment:
+      TS_USERSPACE: false
+      TS_NO_LOGS_NO_SUPPORT: "true"
+      TS_AUTHKEY: ${TRAEFIK_PREAUTH_KEY}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_EXTRA_ARGS: ${TS_EXTRA_ARGS}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - traefik-state:/var/lib/tailscale
+      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
+    networks:
+      intranet:
+        ipv4_address: 172.31.255.2
+      traefik:
+      atuin:
+      vaultwarden:
+      grafana:
+      homepage:
+      memos:
+      drawio:
+      mitmproxy: 
+
   traefik:
     <<: *logging
     image: "traefik:v3"
@@ -52,21 +94,23 @@ services:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/config"
+      - "--providers.file.watch=true"
       - "--entryPoints.web.address=:80"
       - "--entryPoints.websecure.address=:443"
+      - "--global.checkNewVersion=false"
+      - "--global.sendAnonymousUsage=false"
       - "--metrics.prometheus=true"
       - "--metrics.prometheus.addEntryPointsLabels=true"
       - "--metrics.prometheus.addServicesLabels=true"
       - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
       - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.myresolver.acme.caserver=https://step-ca:9000/acme/acme/directory"
-      - "--certificatesresolvers.myresolver.acme.email=postmaster@example.com"
+      - "--certificatesresolvers.myresolver.acme.email=postmaster@email.localhost"
       - "--certificatesresolvers.myresolver.acme.storage=/data/acme.json"
       - "--serverstransport.insecureskipverify=true"
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
+      - "./config/traefik/:/config/"
       - "./data/traefik/:/data/"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       # TIPS: required in order to trust tls with https://step-ca:9000, must bootstrap docker host with step-ca see README.md
@@ -79,68 +123,50 @@ services:
       - "traefik.http.routers.traefik.tls=true"
       - "traefik.http.routers.traefik.tls.certresolver=myresolver"
       - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+    network_mode: service:ts-traefik   # no own network — only reachable via tailnet
     depends_on:
-      step-ca:
-          condition: service_healthy
-      vaultwarden:
-          condition: service_healthy
-    networks:
-      external:
-      intranet:
-        ipv4_address: 172.31.255.2
-      traefik:
-      atuin:
-      vaultwarden:
-      grafana:
-      homepage:
-      memos:
-      drawio:
-      mitmproxy: 
-      kanidm:
-      headscale:
+      - ts-traefik
   headscale:
     <<: *logging
-    image: headscale/headscale:0
+    image: headscale/headscale:0.29.2
     restart: unless-stopped
     container_name: headscale
     volumes:
       # Please set <HEADSCALE_PATH> to the absolute path
       # of the previously created headscale directory.
-      - ./config/headscale:/etc/headscale
-      - ./data/headscale/lib:/var/lib/headscale
-      - ./data/headscale/run:/var/run/headscale
+      - ./config/headscale:/etc/headscale:ro
+      - ./data/headscale:/var/lib/headscale
       - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
     ports:
       - "3478:3478/udp"
+      - "9443:9443"
     command: serve
     healthcheck:
         test: ["CMD", "headscale", "health"]
+        timeout: 40s
+        interval: 30s
+        retries: 5
+        start_period: 60s
+    secrets:
+      - headscale_oidc_client_secret
     networks:
-      external:
-      headscale:
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=headscale"
-      - "traefik.http.routers.headscale.rule=Host(`headscale.lb.localhost`)"
-      - "traefik.http.routers.headscale.entrypoints=websecure"
-      - "traefik.http.routers.headscale.tls.certresolver=myresolver"
-      - "traefik.http.services.headscale.loadbalancer.server.port=8080"
-  tailscaled:
-    image: tailscale/tailscale
-    container_name: tailscaled
-    network_mode: host
+      - intranet
+
+  ts-hello:
+    <<: *ts-base
+    hostname: hello-service
     volumes:
-      - ./data/tailscaled:/var/lib/tailscale  # Dedicated host dir
+      - hello-state:/var/lib/tailscale
       - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
-    cap_add:
-      - NET_ADMIN
-    environment:
-      - TS_HOSTNAME=tailscaled
-      - TS_EXTRA_ARGS=--advertise-tags=tag:proxy --accept-dns=true
-      - TS_NO_LOGS_NO_SUPPORT=true
-      - TS_USERSPACE=true
-      - TS_LOGIN_SERVER=https://headscale.lb.localhost
-    restart: unless-stopped
+    networks:
+      hello:
+          
+
+  hello:
+    image: traefik/whoami
+    network_mode: service:ts-hello   # no own network — only reachable via tailnet
+    depends_on:
+      - ts-hello
 
   mitmproxy:
     <<: *logging
@@ -162,23 +188,14 @@ services:
       - "traefik.http.services.mitmproxy.loadbalancer.server.port=8081"
   kanidm:
     <<: *logging
-    image: kanidm/server:1.11.0
+    image: kanidm/server:1.11.1
     container_name: kanidm
     restart: unless-stopped
+    ports:
+      - "8443:8443"
     volumes:
       - ./config/kanidm/:/data/
       - ./data/kanidm/:/storage/
-    networks:
-      kanidm:
-      memos:
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=kanidm"
-      - traefik.http.routers.kanidm.rule=Host(`kanidm.lb.localhost`)
-      - traefik.http.routers.kanidm.entrypoints=websecure
-      - "traefik.http.routers.kanidm.tls.certresolver=myresolver"
-      - traefik.http.services.kanidm.loadbalancer.server.port=8443
-      - traefik.http.services.kanidm.loadbalancer.server.scheme=https
   vaultwarden:
     <<: *logging
     image: vaultwarden/server:latest
@@ -314,9 +331,6 @@ services:
     volumes: 
       - "./config/prometheus/config.yml:/etc/prometheus/prometheus.yml"
       - prom-data:/prometheus
-    depends_on:
-      cadvisor:
-        condition: service_healthy
     networks:
       prometheus:
       cadvisor:
@@ -335,10 +349,6 @@ services:
       - "./config/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml"
       - "./config/grafana/dashboard.json:/var/lib/grafana/dashboards/dashboard.json"
       - "./config/grafana/default.yaml:/etc/grafana/provisioning/dashboards/default.yaml"
-    depends_on:
-      - traefik
-      - prometheus
-      - loki
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=grafana"
@@ -354,8 +364,11 @@ volumes:
   grafana-data:
   loki-data:
   prom-data:
+  hello-state:
+  traefik-state:
 
 networks:
+  hello:
   atuin:
     internal: true
   vaultwarden:
@@ -387,7 +400,6 @@ networks:
   coredns:
     internal: true
   intranet:
-    internal: true
     ipam:
       config:
         - subnet: 172.31.255.0/24
@@ -405,3 +417,8 @@ networks:
       config:
         - subnet: 172.31.253.0/24
           ip_range: 172.31.253.128/25
+
+
+secrets:
+  headscale_oidc_client_secret:
+    environment: "HEADSCALE_OIDC_CLIENT_SECRET"

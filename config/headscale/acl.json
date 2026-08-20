@@ -1,0 +1,58 @@
+{
+  "groups": {
+    "group:admin": ["admin@"],
+    "group:users": ["admin@", "citizen@"]
+  },
+
+  "tagOwners": {
+    "tag:host": ["group:admin"],
+    "tag:traefik": ["group:admin"],
+    "tag:svc": ["group:admin"]
+  },
+
+  "autoApprovers": {
+    "routes": {
+      "172.31.255.0/24": ["tag:host"]
+    }
+  },
+
+    "acls": [
+    // 1. Les utilisateurs n'accèdent qu'à Traefik, sur 80/443
+    {
+      "action": "accept",
+      "src": ["group:users"],
+      "proto": "tcp",
+      "dst": ["tag:traefik:80,443"]
+    },
+
+    // 2. Traefik atteint tous les services, sur leurs ports applicatifs internes
+    {
+      "action": "accept",
+      "src": ["tag:traefik"],
+      "proto": "tcp",
+      "dst": ["tag:svc:3000,5000,8080,80"]
+    },
+
+    // 3. Les admins ont un accès complet pour le debug
+    {
+      "action": "accept",
+      "src": ["group:admin"],
+      "dst": ["tag:traefik:*", "tag:svc:*"]
+    },
+
+    // 4. Ping pour les healthchecks
+    {
+      "action": "accept",
+      "src": ["tag:traefik"],
+      "proto": "icmp",
+      "dst": ["tag:svc:*"]
+    },
+
+    // 5. Chacun garde accès à ses propres appareils
+    {
+      "action": "accept",
+      "src": ["autogroup:member"],
+      "dst": ["autogroup:self:*"]
+    }
+  ]
+}

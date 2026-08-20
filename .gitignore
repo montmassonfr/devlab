@@ -1,2 +1,4 @@
 .env
 data
+config/headscale/config.yml
+config/kanidm/server.toml

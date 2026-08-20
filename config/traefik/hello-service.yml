@@ -1,0 +1,16 @@
+http:
+  routers:
+    hello-service:
+      rule: "Host(`hello.lb.localhost`)"
+      entryPoints:
+        - "websecure"
+      service: hello-service
+      tls:
+        certResolver: "myresolver"
+
+  services:
+    hello-service:
+      loadBalancer:
+        servers:
+          - url: "http://hello-service.zt.internal"
+        passHostHeader: true
