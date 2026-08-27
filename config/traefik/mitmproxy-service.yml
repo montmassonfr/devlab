@@ -1,0 +1,16 @@
+http:
+  routers:
+    mitmproxy:
+      rule: "Host(`mitmweb.lb.localhost`)"
+      entryPoints:
+        - "websecure"
+      service: mitmproxy
+      tls:
+        certResolver: "myresolver"
+
+  services:
+    mitmproxy:
+      loadBalancer:
+        servers:
+          - url: "http://mitmproxy.zt.internal:8081"
+        passHostHeader: true

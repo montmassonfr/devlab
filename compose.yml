@@ -60,6 +60,7 @@ services:
   ts-traefik:
     <<: *ts-base
     dns: 100.100.100.100
+    container_name: "traefik"
     environment:
       TS_USERSPACE: false
       TS_NO_LOGS_NO_SUPPORT: "true"
@@ -76,18 +77,11 @@ services:
       intranet:
         ipv4_address: 172.31.255.2
       traefik:
-      atuin:
-      vaultwarden:
-      grafana:
       homepage:
-      memos:
-      drawio:
-      mitmproxy: 
 
   traefik:
     <<: *logging
     image: "traefik:v3"
-    container_name: "traefik"
     restart: unless-stopped
     command:
       - "--log.level=DEBUG"
@@ -168,24 +162,98 @@ services:
     depends_on:
       - ts-hello
 
+  ts-mitmproxy:
+    <<: *ts-base
+    hostname: mitmproxy
+    volumes:
+      - mitmproxy-state:/var/lib/tailscale
+      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro"
+    networks:
+      mitmproxy:
+      proxified:
+        ipv4_address: 172.31.253.3
+      external:
+
+  ts-vaultwarden:
+    <<: *ts-base
+    hostname: vaultwarden
+    volumes:
+      - vaultwarden-state:/var/lib/tailscale
+      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro"
+    networks:
+      vaultwarden:
+
+  ts-homepage:
+    <<: *ts-base
+    hostname: homepage
+    volumes:
+      - homepage-state:/var/lib/tailscale
+      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro"
+    networks:
+      homepage:
+      prometheus:
+
+  ts-memos:
+    <<: *ts-base
+    hostname: memos
+    volumes:
+      - memos-state:/var/lib/tailscale
+      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro"
+    networks:
+      memos:
+
+  ts-atuin:
+    <<: *ts-base
+    hostname: atuin
+    volumes:
+      - atuin-state:/var/lib/tailscale
+      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro"
+    networks:
+      atuin:
+      atuin-pg:
+
+  ts-grafana:
+    <<: *ts-base
+    hostname: grafana
+    volumes:
+      - grafana-state:/var/lib/tailscale
+      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro"
+    networks:
+      grafana:
+      prometheus:
+      loki:
+
+  ts-prometheus:
+    <<: *ts-base
+    hostname: prometheus
+    volumes:
+      - prometheus-state:/var/lib/tailscale
+      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro"
+    networks:
+      prometheus:
+      cadvisor:
+      traefik:
+      coredns:
+
+  ts-loki:
+    <<: *ts-base
+    hostname: loki
+    volumes:
+      - loki-state:/var/lib/tailscale
+      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro"
+    networks:
+      loki:
+        ipv4_address: 172.31.254.1
+
   mitmproxy:
     <<: *logging
     image: mitmproxy/mitmproxy:12
     command: mitmweb --mode ${MITM_PROXY_MODE} --web-host 0.0.0.0 --set web_password=${MITM_PASSWORD}
     container_name: "mitmproxy"
     restart: unless-stopped
-    networks:
-      external:
-      mitmproxy:   
-      proxified:
-        ipv4_address: 172.31.253.3
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=mitmproxy"
-      - "traefik.http.routers.mitmproxy.rule=Host(`mitmweb.lb.localhost`)"
-      - "traefik.http.routers.mitmproxy.entrypoints=websecure"
-      - "traefik.http.routers.mitmproxy.tls.certresolver=myresolver"
-      - "traefik.http.services.mitmproxy.loadbalancer.server.port=8081"
+    network_mode: service:ts-mitmproxy
+    depends_on:
+      - ts-mitmproxy
   kanidm:
     <<: *logging
     image: kanidm/server:1.11.1
@@ -205,15 +273,9 @@ services:
       DOMAIN: "https://vaultwarden.lb.localhost"
     volumes:
       - ./data/vaultwarden/:/data/
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=vaultwarden"
-      - "traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.lb.localhost`)"
-      - "traefik.http.routers.vaultwarden.entrypoints=websecure"
-      - "traefik.http.routers.vaultwarden.tls.certresolver=myresolver"
-      - "traefik.http.services.vaultwarden.loadbalancer.server.port=80"
-    networks:
-      vaultwarden:
+    network_mode: service:ts-vaultwarden
+    depends_on:
+      - ts-vaultwarden
 
   homepage:
     <<: *logging
@@ -226,16 +288,9 @@ services:
     environment:
       HOMEPAGE_ALLOWED_HOSTS: homepage.lb.localhost # required, may need port. See gethomepage.dev/installation/#homepage_allowed_hosts
       LOG_TARGETS: stdout
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=homepage"
-      - "traefik.http.routers.homepage.rule=Host(`homepage.lb.localhost`)"
-      - "traefik.http.routers.homepage.entrypoints=websecure"
-      - "traefik.http.routers.homepage.tls.certresolver=myresolver"
-      - "traefik.http.services.homepage.loadbalancer.server.port=3000"
-    networks:
-      homepage:
-      prometheus:
+    network_mode: service:ts-homepage
+    depends_on:
+      - ts-homepage
   memos:
     <<: *logging
     image: neosmemo/memos:stable
@@ -245,15 +300,9 @@ services:
     volumes:
       - ./data/memos/:/var/opt/memos:Z
       - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=memos"
-      - "traefik.http.routers.memos.rule=Host(`memos.lb.localhost`)"
-      - "traefik.http.routers.memos.entrypoints=websecure"
-      - "traefik.http.routers.memos.tls.certresolver=myresolver"
-      - "traefik.http.services.memos.loadbalancer.server.port=5230"
-    networks:
-      memos:
+    network_mode: service:ts-memos
+    depends_on:
+      - ts-memos
 
   atuin:
     <<: *logging
@@ -263,25 +312,15 @@ services:
     command: start
     volumes:
       - "./config/atuin/:/config/"
-    links:
-      - atuin-pg:db
     environment:
       ATUIN_HOST: "0.0.0.0"
       ATUIN_OPEN_REGISTRATION: "true"
-      ATUIN_DB_URI: postgres://$ATUIN_DB_USERNAME:$ATUIN_DB_PASSWORD@db/$ATUIN_DB_NAME
+      ATUIN_DB_URI: postgres://$ATUIN_DB_USERNAME:$ATUIN_DB_PASSWORD@atuin-pg/$ATUIN_DB_NAME
       RUST_LOG: info,atuin_server=debug
     depends_on:
       - atuin-pg
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=atuin"
-      - "traefik.http.routers.atuin.rule=Host(`atuin.lb.localhost`)"
-      - "traefik.http.routers.atuin.entrypoints=websecure"
-      - "traefik.http.routers.atuin.tls.certresolver=myresolver"
-      - "traefik.http.services.atuin.loadbalancer.server.port=8888"
-    networks:
-      atuin:
-      atuin-pg:
+      - ts-atuin
+    network_mode: service:ts-atuin
       
   atuin-pg:
     <<: *logging
@@ -313,6 +352,7 @@ services:
       cadvisor:
 
   loki:
+    <<: *logging
     container_name: loki
     restart: unless-stopped
     image: grafana/loki:latest
@@ -320,24 +360,24 @@ services:
       - ./config/loki/loki-config.yaml:/etc/loki/local-config.yaml
       - loki-data:/loki
     command: -config.file=/etc/loki/local-config.yaml
-    networks:
-      loki:
-        ipv4_address: 172.31.254.1
+    network_mode: service:ts-loki
+    depends_on:
+      - ts-loki
 
   prometheus:
+    <<: *logging
     container_name: prometheus
     restart: unless-stopped
     image: prom/prometheus:latest
     volumes: 
       - "./config/prometheus/config.yml:/etc/prometheus/prometheus.yml"
       - prom-data:/prometheus
-    networks:
-      prometheus:
-      cadvisor:
-      traefik:
-      coredns:
+    network_mode: service:ts-prometheus
+    depends_on:
+      - ts-prometheus
 
   grafana:
+    <<: *logging
     container_name: grafana
     restart: unless-stopped
     image: grafana/grafana:latest
@@ -349,56 +389,43 @@ services:
       - "./config/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml"
       - "./config/grafana/dashboard.json:/var/lib/grafana/dashboards/dashboard.json"
       - "./config/grafana/default.yaml:/etc/grafana/provisioning/dashboards/default.yaml"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=grafana"
-      - "traefik.http.routers.grafana.rule=Host(`grafana.lb.localhost`)"
-      - "traefik.http.routers.grafana.entrypoints=websecure"
-      - "traefik.http.routers.grafana.tls.certresolver=myresolver"
-      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
-    networks:
-      grafana:
-      prometheus:
-      loki:
+    network_mode: service:ts-grafana
+    depends_on:
+      - ts-grafana
 volumes:
   grafana-data:
   loki-data:
   prom-data:
   hello-state:
   traefik-state:
+  mitmproxy-state:
+  vaultwarden-state:
+  homepage-state:
+  memos-state:
+  atuin-state:
+  grafana-state:
+  prometheus-state:
+  loki-state:
 
 networks:
   hello:
   atuin:
-    internal: true
   vaultwarden:
-    internal: true
   grafana:
-    internal: true
   homepage:
-    internal: true
   memos:
-    internal: true
   atuin-pg:
-    internal: true
   prometheus:
-    internal: true
   mitmproxy:   
-    internal: true
   cadvisor:
-    internal: true
   loki:
-    internal: true
     ipam:
       config:
         - subnet: 172.31.254.0/24
           ip_range: 172.31.254.128/25
   traefik:
-    internal: true
   drawio:
-    internal: true
   coredns:
-    internal: true
   intranet:
     ipam:
       config:

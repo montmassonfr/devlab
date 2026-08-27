@@ -1,0 +1,16 @@
+http:
+  routers:
+    homepage:
+      rule: "Host(`homepage.lb.localhost`)"
+      entryPoints:
+        - "websecure"
+      service: homepage
+      tls:
+        certResolver: "myresolver"
+
+  services:
+    homepage:
+      loadBalancer:
+        servers:
+          - url: "http://homepage.zt.internal:3000"
+        passHostHeader: true

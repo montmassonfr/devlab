@@ -1,0 +1,16 @@
+http:
+  routers:
+    vaultwarden:
+      rule: "Host(`vaultwarden.lb.localhost`)"
+      entryPoints:
+        - "websecure"
+      service: vaultwarden
+      tls:
+        certResolver: "myresolver"
+
+  services:
+    vaultwarden:
+      loadBalancer:
+        servers:
+          - url: "http://vaultwarden.zt.internal"
+        passHostHeader: true

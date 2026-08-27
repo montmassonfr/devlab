@@ -1,0 +1,16 @@
+http:
+  routers:
+    grafana:
+      rule: "Host(`grafana.lb.localhost`)"
+      entryPoints:
+        - "websecure"
+      service: grafana
+      tls:
+        certResolver: "myresolver"
+
+  services:
+    grafana:
+      loadBalancer:
+        servers:
+          - url: "http://grafana.zt.internal:3000"
+        passHostHeader: true

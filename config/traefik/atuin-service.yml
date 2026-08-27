@@ -1,0 +1,16 @@
+http:
+  routers:
+    atuin:
+      rule: "Host(`atuin.lb.localhost`)"
+      entryPoints:
+        - "websecure"
+      service: atuin
+      tls:
+        certResolver: "myresolver"
+
+  services:
+    atuin:
+      loadBalancer:
+        servers:
+          - url: "http://atuin.zt.internal:8888"
+        passHostHeader: true
