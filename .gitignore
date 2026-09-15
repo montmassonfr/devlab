@@ -1,4 +1,7 @@
 .env
-data
+data/*
+!data/.gitkeep
+backups/*
+!backups/.gitkeep
 config/headscale/config.yml
 config/kanidm/server.toml
