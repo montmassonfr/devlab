@@ -11,6 +11,7 @@ x-logging: &logging
       loki-retries: "3"
 
 x-ts-base: &ts-base
+  <<: *logging
   image: tailscale/tailscale
   cap_add:
     - net_admin
@@ -27,6 +28,16 @@ x-ts-base: &ts-base
     TS_EXTRA_ARGS: ${TS_EXTRA_ARGS}
   extra_hosts:
     - "${FQDN}:host-gateway"
+
+x-ts-service: &ts-service
+  <<: *ts-base
+  environment:
+    TS_USERSPACE: false
+    TS_NO_LOGS_NO_SUPPORT: "true"
+    TS_AUTHKEY: ${SERVICE_PREAUTH_KEY}
+    TS_STATE_DIR: /var/lib/tailscale
+    TS_EXTRA_ARGS: ${TS_EXTRA_ARGS}
+
 services:
   # inspired from https://theorangeone.net/posts/expose-docker-internal-dns/
   coredns:
@@ -97,11 +108,11 @@ services:
       - "--metrics.prometheus=true"
       - "--metrics.prometheus.addEntryPointsLabels=true"
       - "--metrics.prometheus.addServicesLabels=true"
-      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
-      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.caserver=https://step-ca:9000/acme/acme/directory"
       - "--certificatesresolvers.myresolver.acme.email=postmaster@email.localhost"
       - "--certificatesresolvers.myresolver.acme.storage=/data/acme.json"
+      - "--certificatesresolvers.myresolver.acme.certificatesduration=24"
       - "--serverstransport.insecureskipverify=true"
     volumes:
       - "./config/traefik/:/config/"
@@ -147,7 +158,7 @@ services:
       - intranet
 
   ts-hello:
-    <<: *ts-base
+    <<: *ts-service
     hostname: hello-service
     volumes:
       - hello-state:/var/lib/tailscale
@@ -163,7 +174,7 @@ services:
       - ts-hello
 
   ts-mitmproxy:
-    <<: *ts-base
+    <<: *ts-service
     hostname: mitmproxy
     volumes:
       - mitmproxy-state:/var/lib/tailscale
@@ -175,7 +186,7 @@ services:
       external:
 
   ts-vaultwarden:
-    <<: *ts-base
+    <<: *ts-service
     hostname: vaultwarden
     volumes:
       - vaultwarden-state:/var/lib/tailscale
@@ -184,7 +195,7 @@ services:
       vaultwarden:
 
   ts-homepage:
-    <<: *ts-base
+    <<: *ts-service
     hostname: homepage
     volumes:
       - homepage-state:/var/lib/tailscale
@@ -194,7 +205,7 @@ services:
       prometheus:
 
   ts-memos:
-    <<: *ts-base
+    <<: *ts-service
     hostname: memos
     volumes:
       - memos-state:/var/lib/tailscale
@@ -203,7 +214,7 @@ services:
       memos:
 
   ts-atuin:
-    <<: *ts-base
+    <<: *ts-service
     hostname: atuin
     volumes:
       - atuin-state:/var/lib/tailscale
@@ -213,7 +224,7 @@ services:
       atuin-pg:
 
   ts-grafana:
-    <<: *ts-base
+    <<: *ts-service
     hostname: grafana
     volumes:
       - grafana-state:/var/lib/tailscale
@@ -222,28 +233,6 @@ services:
       grafana:
       prometheus:
       loki:
-
-  ts-prometheus:
-    <<: *ts-base
-    hostname: prometheus
-    volumes:
-      - prometheus-state:/var/lib/tailscale
-      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro"
-    networks:
-      prometheus:
-      cadvisor:
-      traefik:
-      coredns:
-
-  ts-loki:
-    <<: *ts-base
-    hostname: loki
-    volumes:
-      - loki-state:/var/lib/tailscale
-      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro"
-    networks:
-      loki:
-        ipv4_address: 172.31.254.1
 
   mitmproxy:
     <<: *logging
@@ -264,6 +253,7 @@ services:
     volumes:
       - ./config/kanidm/:/data/
       - ./data/kanidm/:/storage/
+      - ./backups/kanidm/:/backups
   vaultwarden:
     <<: *logging
     image: vaultwarden/server:latest
@@ -276,7 +266,18 @@ services:
     network_mode: service:ts-vaultwarden
     depends_on:
       - ts-vaultwarden
-
+  vaultwarden-backup:
+    <<: *logging
+    image: ttionya/vaultwarden-backup:latest
+    restart: always
+    environment:
+       RCLONE_REMOTE_DIR: '/backups/'
+       BACKUP_KEEP_DAYS: 7
+    volumes:
+      - ./config/vaultwarden-backup/:/config/
+      - ./data/vaultwarden/:/bitwarden/data/
+      - ./backups/vaultwarden:/backups
+    #   - /path/to/env:/.env
   homepage:
     <<: *logging
     image: ghcr.io/gethomepage/homepage:latest
@@ -304,6 +305,31 @@ services:
     depends_on:
       - ts-memos
 
+  memos-backup:
+    <<: *logging
+    image: alpine/sqlite:3.53.4
+    container_name: memos-backup
+    restart: unless-stopped
+    volumes:
+      - ./data/memos/:/data:ro
+      - ./backups/memos:/backups
+    environment:
+      - RETENTION_DAYS=7
+      - BACKUP_INTERVAL=86400
+      - DB_NAME=memos_prod.db
+    entrypoint: >
+      sh -c "
+      echo 'memos-backup sidecar started' &&
+      while true; do
+        ts=$$(date +%Y%m%d_%H%M%S);
+        echo \"[$$ts] running backup...\";
+        sqlite3 /data/$$DB_NAME \".backup /backups/memos_$${ts}.db\" &&
+        echo \"[$$ts] backup OK: memos_$${ts}.db\" ||
+        echo \"[$$ts] backup FAILED\";
+        find /backups -name 'memos_*.db' -mtime +$$RETENTION_DAYS -delete;
+        sleep $$BACKUP_INTERVAL;
+      done
+      "
   atuin:
     <<: *logging
     restart: unless-stopped
@@ -336,12 +362,12 @@ services:
     networks:
       atuin-pg:
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
+    image: ghcr.io/google/cadvisor:latest
     container_name: cadvisor
     restart: unless-stopped
     volumes: 
       - "/:/rootfs"
-      - "/var/run:/var/run"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "/sys:/sys"
       - "/var/lib/docker/:/var/lib/docker"
       - "/dev/disk/:/dev/disk"
@@ -354,27 +380,31 @@ services:
   loki:
     <<: *logging
     container_name: loki
+    hostname: loki
     restart: unless-stopped
     image: grafana/loki:latest
     volumes:
       - ./config/loki/loki-config.yaml:/etc/loki/local-config.yaml
       - loki-data:/loki
     command: -config.file=/etc/loki/local-config.yaml
-    network_mode: service:ts-loki
-    depends_on:
-      - ts-loki
+    networks:
+      loki:
+        ipv4_address: 172.31.254.1
 
   prometheus:
     <<: *logging
     container_name: prometheus
+    hostname: prometheus
     restart: unless-stopped
     image: prom/prometheus:latest
     volumes: 
       - "./config/prometheus/config.yml:/etc/prometheus/prometheus.yml"
       - prom-data:/prometheus
-    network_mode: service:ts-prometheus
-    depends_on:
-      - ts-prometheus
+    networks:
+      prometheus:
+      cadvisor:
+      traefik:
+      coredns:
 
   grafana:
     <<: *logging
@@ -387,8 +417,6 @@ services:
     volumes: 
       - "grafana-data:/var/lib/grafana"
       - "./config/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml"
-      - "./config/grafana/dashboard.json:/var/lib/grafana/dashboards/dashboard.json"
-      - "./config/grafana/default.yaml:/etc/grafana/provisioning/dashboards/default.yaml"
     network_mode: service:ts-grafana
     depends_on:
       - ts-grafana
@@ -415,17 +443,21 @@ networks:
   homepage:
   memos:
   atuin-pg:
+    internal: true
   prometheus:
+    internal: true
   mitmproxy:   
   cadvisor:
+    internal: true
   loki:
+    internal: true
     ipam:
       config:
         - subnet: 172.31.254.0/24
           ip_range: 172.31.254.128/25
   traefik:
-  drawio:
   coredns:
+    internal: true
   intranet:
     ipam:
       config:
