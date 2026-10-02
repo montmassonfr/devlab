@@ -164,6 +164,8 @@ services:
     volumes:
       - mitmproxy-state:/var/lib/tailscale
       - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro"
+    ports:
+     - "8080:8080"
     networks:
       mitmproxy:
       proxified:
