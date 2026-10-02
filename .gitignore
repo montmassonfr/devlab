@@ -5,3 +5,4 @@ backups/*
 !backups/.gitkeep
 config/headscale/config.yml
 config/kanidm/server.toml
+config/step-ca/ca.json

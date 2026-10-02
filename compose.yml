@@ -61,11 +61,11 @@ services:
     dns: 172.31.255.1
     ports:
       - "9000:9000"
-    environment:
-      - "CONFIGPATH=/config/ca.json"
     volumes:
       - "./data/step-ca/:/home/step/"
       - "./config/step-ca/:/config/"
+    # Force step-ca to read the config file from your custom mount point:
+    command: /usr/local/bin/step-ca /config/ca.json --password-file=/home/step/secrets/password
     networks:
       intranet:
   ts-traefik:
@@ -94,6 +94,8 @@ services:
     <<: *logging
     image: "traefik:v3"
     restart: unless-stopped
+    environment:
+      - FQDN=${FQDN}
     command:
       - "--log.level=DEBUG"
       - "--api.insecure=true"
@@ -109,7 +111,7 @@ services:
       - "--metrics.prometheus.addEntryPointsLabels=true"
       - "--metrics.prometheus.addServicesLabels=true"
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
-      - "--certificatesresolvers.myresolver.acme.caserver=https://step-ca:9000/acme/acme/directory"
+      - "--certificatesresolvers.myresolver.acme.caserver=https://${FQDN}:9000/acme/acme/directory"
       - "--certificatesresolvers.myresolver.acme.email=postmaster@email.localhost"
       - "--certificatesresolvers.myresolver.acme.storage=/data/acme.json"
       - "--certificatesresolvers.myresolver.acme.certificatesduration=24"
@@ -155,24 +157,7 @@ services:
     secrets:
       - headscale_oidc_client_secret
     networks:
-      - intranet
-
-  ts-hello:
-    <<: *ts-service
-    hostname: hello-service
-    volumes:
-      - hello-state:/var/lib/tailscale
-      - "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro" 
-    networks:
-      hello:
-          
-
-  hello:
-    image: traefik/whoami
-    network_mode: service:ts-hello   # no own network — only reachable via tailnet
-    depends_on:
-      - ts-hello
-
+      - intranet          
   ts-mitmproxy:
     <<: *ts-service
     hostname: mitmproxy
@@ -424,7 +409,6 @@ volumes:
   grafana-data:
   loki-data:
   prom-data:
-  hello-state:
   traefik-state:
   mitmproxy-state:
   vaultwarden-state:
@@ -436,7 +420,6 @@ volumes:
   loki-state:
 
 networks:
-  hello:
   atuin:
   vaultwarden:
   grafana:
