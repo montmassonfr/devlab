@@ -3,6 +3,10 @@
 	"federatedRoots": null,
 	"crt": "/home/step/certs/intermediate_ca.crt",
 	"key": "/home/step/secrets/intermediate_ca_key",
+	"ssh": {
+		"hostKey": "/home/step/secrets/ssh_host_ca_key",
+		"userKey": "/home/step/secrets/ssh_user_ca_key"
+	},
 	"address": ":9000",
 	"insecureAddress": "",
 	"dnsNames": [
@@ -33,7 +37,7 @@
 			"ssh": {
 				"user": {
 					"allow": {
-						"email": ["@local"]
+						"email": ["@localhost"]
 					}
 				},
 				"host": {
